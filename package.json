@@ -1,0 +1,34 @@
+{
+  "name": "poly-simplify",
+  "version": "0.1.1",
+  "type": "module",
+  "main": "dist/poly-simplify.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/herrstrietzel/poly-simplify.git"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c --watch"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^3.29.5",
+    "rollup-plugin-concat": "^1.0.4"
+  },
+  "keywords": [
+    "polygon",
+    "simplification",
+    "Ramer-Douglas-Peucker"
+  ],
+  "author": "herrstrietzel",
+  "license": "MIT",
+  "description": "Simplify/reduce polylines/polygon vertices in JS",
+  "dependencies": {
+    "terser": "^5.39.0"
+  },
+  "bugs": {
+    "url": "https://github.com/herrstrietzel/poly-simplify/issues"
+  },
+  "homepage": "https://github.com/herrstrietzel/poly-simplify#readme"
+}
