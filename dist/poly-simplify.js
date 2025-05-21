@@ -163,7 +163,7 @@
     function polySimplify_core
         (pts, {
             tolerance = 0.5,
-            useRDP = false,
+            useRDP = true,
             decimals = -1,
             maxVertices = Infinity,
             useMax = false,
