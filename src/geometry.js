@@ -5,11 +5,30 @@ export function getSquareDistance(p1, p2) {
 }
 
 
+export function detectRegularPolygon(pts){
+    let lastDist=getSquareDistance(pts[0], pts[1]);
+    let isRegular = true;
+
+    for(let i=3,l=pts.length; i<l; i++){
+        let pt1= pts[i-1];
+        let pt2 = pts[i];
+        let dist = getSquareDistance(pt1, pt2);
+        let distDiff = 100/lastDist * Math.abs(lastDist-dist);
+
+        if(distDiff>0.1) {
+            return false;
+        }
+
+        lastDist = dist;
+    }
+    return isRegular;
+}
+
+
 /**
  * reduce polypoints
  * for sloppy dimension approximations
  */
-
 export function reducePoints(points, maxPoints = 48) {
     if (!Array.isArray(points) || points.length <= maxPoints) return points;
 

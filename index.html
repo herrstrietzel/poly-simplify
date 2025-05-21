@@ -14,17 +14,26 @@
 <body>
 
     <h1>Polygon simplification</h1>
-    <p>Based on Vladimir Agafonkin's <a
-            href="https://github.com/mourner/simplify-js/blob/master/simplify.js">simplify.js</a></p>
-
 
     <p><label>Simplify tolerance:</label>
-        <input class="inputs" id="inputTolerance" type="number" min="0" max="50" value="0.1" step="0.1">
+        <input class="inputs" id="inputTolerance" type="number" min="0" max="50" value="0.1" step="0.01">
+    </p>
+
     <p><label>Rounding:</label>
         <input class="inputs" id="inputDecimals" type="number" min="-1" max="9" value="3" step="1">
 
         <label>Apply Ramer-Douglas-Peucker <input class="inputs" id="inputRDP" type="checkbox" checked></label>
     </p>
+
+    <p>
+        <label>Max vertices:</label>
+        <input class="inputs" id="inputMaxVertices" type="number" min="0" max="1024" value="256" step="1">
+        <label>Max vertices simplification <input class="inputs" id="inputMax" type="checkbox"></label>
+
+    </p>
+
+
+    <p id="perf"></p>
 
 
     <div class="grd">
@@ -148,11 +157,17 @@
             let options = {
                 tolerance: +inputTolerance.value,
                 useRDP: inputRDP.checked,
+                //useRDP: false,
                 decimals: +inputDecimals.value,
                 output: 'string',
+                maxVertices: +inputMaxVertices.value,
+                useMax: inputMax.checked,
                 meta: true
             }
 
+            let {meta} =  options;
+
+            let t0= performance.now();
 
             //simplify 
             let pts1 = [...poly1.points];
@@ -165,33 +180,40 @@
             let ptsS1 = polySimplify(pts1, options);
 
             //console.log('ptsS1', ptsS1);
-            let polyAtt1 = ptsS1.data;
-            //console.log('simple', polyPts);
-            polyS1.setAttribute('points', polyAtt1)
-            c1.textContent = ptsS1.count + '/' +ptsS1.original; 
-
+            let polyAtt1 = meta ? ptsS1.data : ptsS1;
 
             
             // geo json example
             let pts2 = coords_london;
             let ptsS2 = polySimplify(pts2, options)
-            //let d = polySimplify(pts2, {...options, ...{output:'d'}}).data
-            //console.log('d', d);
-            let polyAtt2 = ptsS2.data;
-            polyS2.setAttribute('points', polyAtt2)
-            adjustViewBox(svg2)
-            c2.textContent = ptsS2.count+ '/' +ptsS2.original ;
+            let polyAtt2 = meta ? ptsS2.data : ptsS2;
 
-
-
-            // g poly
-
+            
+            // geo data poly
             let pts3 = [...poly3.points];
             let ptsS3 = polySimplify(pts3, options);
-            let polyAtt3 = ptsS3.data;
+            let polyAtt3 = meta ? ptsS3.data : ptsS3;
             //console.log('simple', polyPts);
+
+
+            let t1 = +(performance.now()-t0).toFixed(3);
+            perf.textContent= t1+' ms';
+
+
+
+            // render
+            polyS1.setAttribute('points', polyAtt1)
+            c1.textContent = meta ? ptsS1.count + '/' +ptsS1.original : ''; 
+
+
+            polyS2.setAttribute('points', polyAtt2)
+            adjustViewBox(svg2)
+            c2.textContent = meta ? ptsS2.count+ '/' +ptsS2.original : '';
+
+
+
             polyS3.setAttribute('points', polyAtt3)
-            c3.textContent = ptsS3.count + '/' +ptsS3.original;
+            c3.textContent =  meta ? ptsS3.count + '/' +ptsS3.original : '';
 
 
 

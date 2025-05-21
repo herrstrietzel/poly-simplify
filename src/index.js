@@ -1,13 +1,34 @@
 import { normalizePointInput } from './inputs.js';
-import { reducePoints, getAngle, getPolyBBox, getPolygonArea, getSquareDistance } from './geometry.js';
+import { reducePoints, getAngle, getPolyBBox, getPolygonArea, getSquareDistance, detectRegularPolygon } from './geometry.js';
 
 function polySimplify_core
     (pts, {
         tolerance = 0.5,
-        // apply more aggressive simplification
         useRDP = false,
-        // round to decimals
         decimals = -1,
+        maxVertices = Infinity,
+        useMax = false,
+        output = 'points',
+        meta = false
+    } = {}) {
+
+
+    // normalize
+    pts = normalizePointInput(pts);
+
+    // collect simplified point array
+    let ptsSmp = [];
+
+    // output helper
+    const getOutputData = (ptsSmp, output = 'points', pts, getArea = false) => {
+        let total = ptsSmp.length;
+
+        let areaOriginal = getArea ? getPolygonArea(pts, true) : 0;
+        let areaptsSmp = getArea ? getPolygonArea(ptsSmp, true) : 0;
+
+        // area deviation in percent
+        let areaDiff = getArea ? +(100 / areaptsSmp * Math.abs(areaOriginal - areaptsSmp)).toFixed(3) : 0;
+
         /**
          * "points" = point array 
          * "pointstring" = point string 
@@ -15,40 +36,20 @@ function polySimplify_core
          * "pathData" = svg pathdata array 
          * "json" = JSON string
          */
-        output = 'points',
-        meta = false
-    } = {}) {
-
-
-
-    // normalize
-    pts = normalizePointInput(pts);
-
-    // output helper
-    const getOutputData = (simplified, output = 'points', pts, getArea=false)=>{
-        let total = simplified.length;
-
-        let areaOriginal = getArea ? getPolygonArea(pts) : 0;
-        let areaSimplified = getArea ? getPolygonArea(simplified) : 0;
-        let areaDiff =  +(100-areaSimplified/areaOriginal*100).toFixed(3)
-
-
-
-        if (output === 'pointstring' || output === 'string') simplified = simplified.map(pt => `${pt.x} ${pt.y}`).join(' ');
-        if (output === 'path' || output === 'd') simplified = 'M' + simplified.map(pt => `${pt.x} ${pt.y}`).join(' ');
+        if (output === 'pointstring' || output === 'string') ptsSmp = ptsSmp.map(pt => `${pt.x} ${pt.y}`).join(' ');
+        if (output === 'path' || output === 'd') ptsSmp = 'M' + ptsSmp.map(pt => `${pt.x} ${pt.y}`).join(' ');
         if (output === 'pathData' || output === 'pathdata') {
             let pathData = [
-                { type: 'M', values: [simplified[0].x, simplified[0].y] },
-                ...simplified.slice(1).map(pt => { return { type: 'L', values: [pt.x, pt.y] } })
+                { type: 'M', values: [ptsSmp[0].x, ptsSmp[0].y] },
+                ...ptsSmp.slice(1).map(pt => { return { type: 'L', values: [pt.x, pt.y] } })
             ];
-            simplified = pathData
+            ptsSmp = pathData
         }
-        if (output.toLowerCase() === 'json') simplified = JSON.stringify(simplified)
+        if (output.toLowerCase() === 'json') ptsSmp = JSON.stringify(ptsSmp)
 
-
-        return  { data: simplified, count: total, original: pts.length, areaOriginal, areaSimplified, areaDiff }
+        return { data: ptsSmp, count: total, original: pts.length, areaOriginal, areaptsSmp, areaDiff }
     }
-    
+
     let data = getOutputData(pts, output, pts, meta);
 
     // line segments or no simplification
@@ -56,15 +57,86 @@ function polySimplify_core
         return meta ? data : data.data;
     }
 
+
+
     /**
-     * "lossless" simplification:
-     * remove zero length or 
-     * horizontal or vertical segments
-     * geometry should be perfectly retained
+     * 0. reduce vertices to 
+     * maximum limit
+     * brute force but very fast for huge 
+     * point arrays
+     */
+    if( useMax && maxVertices<Infinity){
+        ptsSmp = reducePoints(pts, maxVertices);
+        data = getOutputData(ptsSmp, output, pts, meta);
+        return data;
+    }
+
+
+    /**
+     * 1. lossless simplification
+     * only remove zero-length segments/coinciding points
+     * or flat segments
      */
 
+    ptsSmp = simplifyPolyLossless(pts);
+
+
+
+    /**
+     * check regular polygons
+     * if it's regular:
+     * we skip RDP simplification
+     */
+
+    let isRegular = detectRegularPolygon(ptsSmp);
+    if(isRegular) useRDP=false;
+
+    /**
+     * 2. Ramer-Douglas-Peucker simplification
+     */
+
+    if (useRDP) {
+        ptsSmp = simplifyPolyRDP(ptsSmp, tolerance);
+    }
+
+    if (decimals > -1) {
+        ptsSmp = ptsSmp.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } });
+    }
+
+    /**
+     * "points" = point array 
+     * "pointstring" = point string 
+     * "path" = svg pathdata string 
+     * "pathData" = svg pathdata array 
+     * "json" = JSON string
+     */
+
+    data = getOutputData(ptsSmp, output, pts, meta);
+    console.log('data', data);
+
+    return meta ? data : data.data;
+}
+
+export { polySimplify_core as polySimplify };
+
+
+// Browser global
+if (typeof window !== 'undefined') {
+    window.polySimplify = polySimplify_core;
+}
+
+
+/**
+* "lossless" simplification:
+* remove zero length or 
+* horizontal or vertical segments
+* geometry should be perfectly retained
+*/
+
+export function simplifyPolyLossless(pts) {
+
     let pt0 = pts[0];
-    let simplified = [pt0];
+    let ptsSmp = [pt0];
 
     for (let i = 2, l = pts.length; i < l; i++) {
         let pt1 = pts[i - 1];
@@ -76,7 +148,7 @@ function polySimplify_core
 
             // not all segments are flat - add mid point
             if (!(pt2.x === pt1.x && pt2.y !== pt1.y) && !(pt2.x !== pt1.x && pt2.y === pt1.y)) {
-                simplified.push(pt1);
+                ptsSmp.push(pt1);
             }
             pt0 = pt1;
             continue
@@ -97,43 +169,14 @@ function polySimplify_core
             let isFlat = !area ? true : (squareDistance ? area < areaThreshold : true);
 
             if (!isFlat) {
-                simplified.push(pt1);
+                ptsSmp.push(pt1);
             }
         }
 
         pt0 = pt1;
     }
 
-    if (useRDP) {
-        let simplifiedRDP = simplifyPolyRDP(simplified, tolerance)
-        simplified = simplifiedRDP;
-    }
-
-    if (decimals > -1) {
-        //simplified = simplified.map(pt=> return { x:+pt.x.toFixed(decimals), y:+pt.y.toFixed(decimals)} );
-        simplified = simplified.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } });
-    }
-
-    /**
-     * "points" = point array 
-     * "pointstring" = point string 
-     * "path" = svg pathdata string 
-     * "pathData" = svg pathdata array 
-     * "json" = JSON string
-     */
-
-    data = getOutputData(simplified, output, pts, meta);
-    console.log('data', data);
-
-    return meta ? data : data.data;
-}
-
-export { polySimplify_core as polySimplify };
-
-
-// Browser global
-if (typeof window !== 'undefined') {
-    window.polySimplify = polySimplify_core;
+    return ptsSmp;
 }
 
 
@@ -156,11 +199,14 @@ export function simplifyPolyRDP(pts, tolerance = 0.5) {
      * very small polygons e.g geodata
      */
 
-    let polyS = reducePoints(pts)
-    let {width, height} = getPolyBBox(polyS);
-    let dimAvg = (width+height)/2
-    let scale = dimAvg<=10 ? 100000/dimAvg : 1
-    tolerance /=scale
+    let polyS = reducePoints(pts, 32)
+    let { width, height } = getPolyBBox(polyS);
+    let dimMax = Math.max(width, height);
+    //let scale = dimAvg <= 10 ? 100000 / dimAvg : 1
+    let scale = 50000/dimMax**2;
+    tolerance /= scale;
+
+    console.log('scale', scale, tolerance);
 
 
     /*
@@ -190,8 +236,8 @@ export function simplifyPolyRDP(pts, tolerance = 0.5) {
     };
 
 
-    // start collecting simplified polyline
-    let simplified = [pts[0]];
+    // start collecting ptsSmp polyline
+    let ptsSmp = [pts[0]];
 
     // create processing stack
     let stack = [];
@@ -217,19 +263,19 @@ export function simplifyPolyRDP(pts, tolerance = 0.5) {
             stack.push([index, last]);
             stack.push([first, index]);
         } else {
-            simplified.push(pts[last]);
+            ptsSmp.push(pts[last]);
         }
     }
 
     //console.log('simplifyPolyRDP', scans);
 
     /*
-    let areaPointRatio2 = area/simplified.length
+    let areaPointRatio2 = area/ptsSmp.length
     console.log('areaPointRatio2', areaPointRatio2);
     */
 
 
-    return simplified;
+    return ptsSmp;
 }
 
 
