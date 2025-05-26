@@ -1,129 +1,140 @@
 import { normalizePointInput } from './inputs.js';
-import { reducePoints, getAngle, getPolyBBox, getPolygonArea, getSquareDistance, detectRegularPolygon } from './geometry.js';
+import { reducePoints, getAngle, getPolyBBox, getPolygonArea, getSquareDistance, detectRegularPolygon, scalePolygon } from './geometry.js';
+
+import { pathDataToPoly, minifyPathData, pathDataToD } from './parsePath.js';
+//import { scalePolygon } from './scale.js';
+import {getOutputData} from './ouput.js';
+
 
 function polySimplify_core
     (pts, {
-        tolerance = 0.5,
+        tolerance = 0.1,
+        removeColinear = true,
         useRDP = true,
+        detectRegular = false,
         decimals = -1,
         maxVertices = Infinity,
-        useMax = false,
-        output = 'points',
-        meta = false
+        toMaxVertices = false,
+        outputFormat = 'points',
+        scale = 1,
+        alignToZero = false,
+        translateX = 0,
+        translateY = 0,
+        scaleToWidth = 0,
+        scaleToHeight = 0,
+        meta = false,
+        // options for pathData output
+        toRelative = false,
+        toShorthands = false,
+        minifyString = false
     } = {}) {
 
 
     // normalize
     pts = normalizePointInput(pts);
+    //return pts;
 
-    // collect simplified point array
-    let ptsSmp = [];
+    // if is compound
+    let isCompound = pts[0].length > 1;
 
-    // output helper
-    const getOutputData = (ptsSmp, output = 'points', pts, getArea = false) => {
-        let total = ptsSmp.length;
 
-        let areaOriginal = getArea ? getPolygonArea(pts, true) : 0;
-        let areaptsSmp = getArea ? getPolygonArea(ptsSmp, true) : 0;
+    /**
+     * normalize to array for 
+     * compound polygons or paths
+     */
 
-        // area deviation in percent
-        let areaDiff = getArea ? +(100 / areaptsSmp * Math.abs(areaOriginal - areaptsSmp)).toFixed(3) : 0;
+    let polyArr = isCompound ? pts : [pts];
+    //console.log('polyArr', polyArr);
+
+    let polyArrSimpl = [];
+
+    for(let i=0,l=polyArr.length; i<l; i++ ){
+
+        let pts = polyArr[i];
+
+        // regular polygon detection
+        let isRegular = false;
+
+        // no points - exit
+        if (!pts.length) return [];
+
+        // collect simplified point array
+        let ptsSmp = pts;
+
+        // line segments or no simplification
+        if (pts.length <= 2 || tolerance === 0) {
+            polyArrSimpl.push(ptsSmp);
+            continue;
+        }
+
 
         /**
-         * "points" = point array 
-         * "pointstring" = point string 
-         * "path" = svg pathdata string 
-         * "pathData" = svg pathdata array 
-         * "json" = JSON string
+         * 0. reduce vertices to 
+         * maximum limit
+         * brute force but very fast for huge 
+         * point arrays
          */
-        if (output === 'pointstring' || output === 'string') ptsSmp = ptsSmp.map(pt => `${pt.x} ${pt.y}`).join(' ');
-        if (output === 'path' || output === 'd') ptsSmp = 'M' + ptsSmp.map(pt => `${pt.x} ${pt.y}`).join(' ');
-        if (output === 'pathData' || output === 'pathdata') {
-            let pathData = [
-                { type: 'M', values: [ptsSmp[0].x, ptsSmp[0].y] },
-                ...ptsSmp.slice(1).map(pt => { return { type: 'L', values: [pt.x, pt.y] } })
-            ];
-            ptsSmp = pathData
+        if (toMaxVertices && maxVertices < Infinity) {
+            //console.log('toMaxVertices', toMaxVertices);
+            ptsSmp = reducePoints(pts, maxVertices);
+            polyArrSimpl.push(ptsSmp);
+            continue
         }
-        if (output.toLowerCase() === 'json') ptsSmp = JSON.stringify(ptsSmp)
 
-        return { data: ptsSmp, count: total, original: pts.length, areaOriginal, areaptsSmp, areaDiff }
+
+        /**
+         * 1. lossless simplification
+         * only remove zero-length segments/coinciding points
+         * or flat segments
+         */
+
+        ptsSmp = removeColinear ? simplifyRemoveColinear(ptsSmp, isCompound) : ptsSmp;
+
+        /**
+         * check regular polygons
+         * if it's regular:
+         * we skip RDP simplification
+         */
+
+        if (detectRegular) {
+            //console.log('detectRegular', detectRegular);
+            isRegular = detectRegularPolygon(ptsSmp);
+            if (isRegular) useRDP = false;
+        }
+
+        /**
+         * 2. Ramer-Douglas-Peucker simplification
+         */
+        if (useRDP) {
+            //console.log('useRDP', useRDP);
+            ptsSmp = simplifyPolyRDP(ptsSmp, tolerance, isCompound);
+        }
+
+        // add to final pts array
+        polyArrSimpl.push(ptsSmp);
+
     }
 
-    let data = getOutputData(pts, output, pts, meta);
 
-    // line segments or no simplification
-    if (pts.length <= 2 || tolerance === 0) {
-        return meta ? data : data.data;
-    }
+    let data = getOutputData(polyArr, polyArrSimpl, outputFormat, meta, decimals, toRelative, toShorthands, minifyString, scale, translateX, translateY, alignToZero, scaleToWidth, scaleToHeight);
 
+    //dataArr.push(data);
+    //console.log('data', data);
 
-
-    /**
-     * 0. reduce vertices to 
-     * maximum limit
-     * brute force but very fast for huge 
-     * point arrays
-     */
-    if( useMax && maxVertices<Infinity){
-        ptsSmp = reducePoints(pts, maxVertices);
-        data = getOutputData(ptsSmp, output, pts, meta);
-        return data;
-    }
-
-
-    /**
-     * 1. lossless simplification
-     * only remove zero-length segments/coinciding points
-     * or flat segments
-     */
-
-    ptsSmp = simplifyPolyLossless(pts);
-
-
-
-    /**
-     * check regular polygons
-     * if it's regular:
-     * we skip RDP simplification
-     */
-
-    let isRegular = detectRegularPolygon(ptsSmp);
-    if(isRegular) useRDP=false;
-
-    /**
-     * 2. Ramer-Douglas-Peucker simplification
-     */
-
-    if (useRDP) {
-        ptsSmp = simplifyPolyRDP(ptsSmp, tolerance);
-    }
-
-    if (decimals > -1) {
-        ptsSmp = ptsSmp.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } });
-    }
-
-    /**
-     * "points" = point array 
-     * "pointstring" = point string 
-     * "path" = svg pathdata string 
-     * "pathData" = svg pathdata array 
-     * "json" = JSON string
-     */
-
-    data = getOutputData(ptsSmp, output, pts, meta);
-    console.log('data', data);
-
+    // return either sub poly array or single data item
     return meta ? data : data.data;
 }
 
 export { polySimplify_core as polySimplify };
+export { normalizePointInput, minifyPathData, pathDataToD };
 
 
 // Browser global
 if (typeof window !== 'undefined') {
     window.polySimplify = polySimplify_core;
 }
+
+
 
 
 /**
@@ -133,7 +144,7 @@ if (typeof window !== 'undefined') {
 * geometry should be perfectly retained
 */
 
-export function simplifyPolyLossless(pts) {
+export function simplifyRemoveColinear(pts, isCompound = false) {
 
     let pt0 = pts[0];
     let ptsSmp = [pt0];
@@ -174,6 +185,11 @@ export function simplifyPolyLossless(pts) {
         }
 
         pt0 = pt1;
+
+        // add last vertice
+        if (i === l - 1) {
+            ptsSmp.push(pts[pts.length - 1]);
+        }
     }
 
     return ptsSmp;
@@ -189,9 +205,8 @@ export function simplifyPolyLossless(pts) {
  * and https://karthaus.nl/rdp/
  */
 
-export function simplifyPolyRDP(pts, tolerance = 0.5) {
+export function simplifyPolyRDP(pts, tolerance = 0.1, isCompound = false) {
     if (pts.length <= 2) return pts;
-
 
     /**
      * approximate dimensions
@@ -202,18 +217,8 @@ export function simplifyPolyRDP(pts, tolerance = 0.5) {
     let polyS = reducePoints(pts, 32)
     let { width, height } = getPolyBBox(polyS);
     let dimMax = Math.max(width, height);
-    //let scale = dimAvg <= 10 ? 100000 / dimAvg : 1
-    let scale = 50000/dimMax**2;
+    let scale = dimMax <= 10 ? 100000 / dimMax : 1
     tolerance /= scale;
-
-    console.log('scale', scale, tolerance);
-
-
-    /*
-    let area = getPolygonArea(polyS, true);
-    let areaPointRatio = area/pts.length
-    console.log('areaPointRatio', areaPointRatio);
-    */
 
 
     // Square distance from point to segment

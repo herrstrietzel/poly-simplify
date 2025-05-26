@@ -1,4 +1,9 @@
+import { pathDataToPoly, splitSubpaths, parsePathNorm } from './parsePath.js';
+
+
 export function normalizePointInput(pts) {
+
+    if (!pts || !pts.length) return [];
 
     // convert to point object array helper
     const toPointArray = (pts) => {
@@ -17,14 +22,26 @@ export function normalizePointInput(pts) {
     let isPointArray = pts[0].x || false;
 
     // 1.1 check if point object array but tied to an API constructor e.g SVGPoint
-    let type = isPointArray && typeof pts[0] === 'object' ? (pts[0].constructor.name ? pts[0].constructor.name : 'object') : null
+    let hasConstructor = isPointArray && pts.length > 0 && typeof pts[0] === 'object' && pts[0].constructor !== Object;
+
+    const decoupleFromConstructor = (pts) => {
+        let len = pts.length;
+        let ptArr = new Array(len);
+        for (let i = 0; i < len; i++) {
+            ptArr[i] = { x: pts[i].x, y: pts[i].y };
+        }
+        return ptArr;
+    }
+
 
     // decouple from constructor object type - e.g SVGPoints
-    if (isPointArray && type !== 'object') pts = [...pts].map(pt => { return { x: pt.x, y: pt.y } });
-
+    //hasConstructor=true;
+    if (hasConstructor) decoupleFromConstructor(pts);
 
     // normalized return array
-    if (isPointArray) return pts;
+    if (isPointArray) {
+        return pts;
+    }
 
 
     /**
@@ -34,13 +51,49 @@ export function normalizePointInput(pts) {
 
     let isString = typeof pts === "string";
 
+    // is SVG path data
+    let isPathData = isString ? (pts.startsWith('M') || pts.startsWith('m')) : false;
+    let isCompound = false;
+
+    if (isPathData) {
+        // check if plugin is installed
+        if (typeof pathDataToPoly !== 'function') {
+            console.warn('path to point parser is not installed');
+            return [{ x: 0, y: 0 }];
+        }
+
+        // check compoundPath
+        let pathData = parsePathNorm(pts);
+        let suPaths = splitSubpaths(pathData);
+        isCompound = suPaths.length>1;
+
+        let ptArr = [];
+        if(isCompound){
+            suPaths.forEach(pathData=>{
+
+                let ptsSub = pathDataToPoly(pathData);
+                //console.log(ptsSub);
+                ptArr.push(ptsSub);
+
+            });
+
+        }else{
+            ptArr = pathDataToPoly(pathData);
+        }
+
+        //console.log(isCompound,suPaths.length, ptArr);
+        return ptArr
+    }
+
     // 2.1 check if it's JSON
-    let isJSON = isString ? pts.startsWith('[{"x":') : false;
+    let isJSON = isString ? pts.startsWith('{') || pts.startsWith('[') : false;
+    //console.log('isJSON', isJSON);
 
     // 2.1.1: if JSON – parse data
     if (isJSON) {
         pts = JSON.parse(pts);
-        return pts;
+        isString = false;
+        //return pts;
     }
 
     // 2.2: stringified poly notation – split to array
@@ -62,11 +115,13 @@ export function normalizePointInput(pts) {
      */
     let isArray = Array.isArray(pts);
 
+
+
     // 3.1: is nested array – x/y grouped in sub arrays
     let isNested = isArray && pts[0].length === 2;
 
     // convert to point array
-    if (isNested){
+    if (isNested) {
         pts = pts.map((pt) => {
             return { x: pt[0], y: pt[1] };
         });
@@ -76,7 +131,7 @@ export function normalizePointInput(pts) {
     //!Array.isArray(pts[0]
     let isFlat = !Array.isArray(pts[0]) && !pts[0].hasOwnProperty('x');
     if (isFlat) pts = toPointArray(pts);
-
+    //console.log(isArray, pts);
 
     return pts;
 }

@@ -5,17 +5,17 @@ export function getSquareDistance(p1, p2) {
 }
 
 
-export function detectRegularPolygon(pts){
-    let lastDist=getSquareDistance(pts[0], pts[1]);
+export function detectRegularPolygon(pts) {
+    let lastDist = getSquareDistance(pts[0], pts[1]);
     let isRegular = true;
 
-    for(let i=3,l=pts.length; i<l; i++){
-        let pt1= pts[i-1];
+    for (let i = 3, l = pts.length; i < l; i++) {
+        let pt1 = pts[i - 1];
         let pt2 = pts[i];
         let dist = getSquareDistance(pt1, pt2);
-        let distDiff = 100/lastDist * Math.abs(lastDist-dist);
+        let distDiff = 100 / lastDist * Math.abs(lastDist - dist);
 
-        if(distDiff>0.1) {
+        if (distDiff > 0.1) {
             return false;
         }
 
@@ -91,4 +91,44 @@ export function getPolyBBox(vertices) {
     };
 
     return bb;
+}
+
+export function scalePolygon(pts, scale = 1, translateX = 0, translateY = 0, alignToZero = false, scaleToWidth = 0, scaleToHeight = 0) {
+
+    if (scale === 1 && scaleToWidth === 0 && scaleToHeight === 0 && translateX === 0 && translateY === 0 && alignToZero === false) return pts;
+
+    let x, y, width, height;
+    //calculate scaling factor
+    let isCompound = Array.isArray(pts[0]);
+
+    let ptsArr = isCompound ? pts : [pts];
+    let ptsFlat = isCompound ? pts.flat() : pts;
+
+    ({ x, y, width, height } = getPolyBBox(ptsFlat));
+
+
+    ptsArr.forEach((pts,p) => {
+        scale = scaleToWidth ? scaleToWidth / width : (scaleToHeight ? scaleToHeight / height : scale);
+
+        // if both are defined - adjust to fit in box max dimension
+        if (scaleToWidth, scaleToHeight) {
+            if (height * scale > scaleToHeight) {
+                scale = scaleToHeight / height;
+            }
+        }
+
+        if (alignToZero) {
+            translateX = -x
+            translateY = -y
+        }
+
+        //console.log('scale:', scale, width, scaleToWidth, 'scaleToHeight', scaleToHeight, 'translate', translateX, translateY);
+
+        for (let i = 0, l = pts.length; i < l; i++) {
+            let pt = pts[i];
+            ptsArr[p][i] = { x: (pt.x + translateX) * scale, y: (pt.y + translateY) * scale }
+        }
+    })
+
+    return ptsArr ;
 }

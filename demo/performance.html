@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+    <script src="https://mourner.github.io/simplify-js/website/test-data.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/simplify-js@1.2.4/simplify.min.js"></script>
+
+    <script type="module">
+
+import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPolyRDP, minifyPathData, pathDataToD } from '../dist/poly-simplify.esm.js';
+
+
+
+        let tolerance=0.1;
+        let highQuality = true;
+
+        let t0, t1;
+
+
+
+
+
+        /**
+         * simplify.js
+         */
+         t0=performance.now()
+        let ptsSimple = simplify(points, tolerance, highQuality);
+        t1 = performance.now()-t0;
+        console.log(t1, ptsSimple);
+
+
+
+        /**
+         * poly simplify
+         */
+         let options = {
+            removeColinear: true,
+            useRDP: false,
+            tolerance:tolerance,
+        }
+        t0=performance.now()
+        let ptsSimple2 = polySimplify(points, options)
+        t1 = performance.now()-t0;
+        console.log(t1, ptsSimple2);
+
+
+
+
+
+
+
+
+
+    </script>
+
+
+
+
+</body>
+
+</html>
