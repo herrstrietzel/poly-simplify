@@ -6,7 +6,7 @@
 let fieldsInput = [
     {
         // just a info box
-        info: `<h1 class="h2">PolySimplify </h1>
+        info: `<h1 class="h2"><img class="icn-svg icn-logo dsp-inl-blc" src="./favicon.svg">PolySimplify </h1>
         <p>Simplify/reduce polylines/polygon vertices in JS
         </p>
         <div class="input-group input-group-"><button class="btn btn-default input-button" id="btnReset"><svg viewBox="0 0 112 100" class="icn-svg icn-reload "><use href="#icn-reload"></use></svg> Reset settings</button></div>        
@@ -21,14 +21,13 @@ let fieldsInput = [
 
             {
                 name: 'tolerance',
-                label: 'tolerance',
+                label: 'quality',
                 type: 'range',
-                defaults: 0.1,
+                defaults: 0.9,
                 atts: {
                     min: 0,
-                    max: 10,
-                    step: 0.05,
-                    value: 0.1
+                    max: 1,
+                    step: 0.01,
                 }
             },
 
@@ -36,30 +35,28 @@ let fieldsInput = [
                 name: 'removeColinear',
                 label: 'remove colinear',
                 type: 'checkbox',
-                //defaults: true,
-                //defaults: ['removeColinear'],
-                atts:{
-                    checked:true
-                }
+                defaults: true,
+            },
 
+            {
+                name: 'radialDistance',
+                label: 'use radial distance simplification',
+                type: 'checkbox',
+                defaults: true,
             },
 
             {
                 name: 'useRDP',
                 label: 'use Ramer-Douglas-Peucker',
                 type: 'checkbox',
-                //defaults: true,
-                atts:{
-                    checked:true
-                }
-
+                defaults: true,
             },
 
             {
                 name: 'toMaxVertices',
                 label: 'To max vertices',
                 type: 'checkbox',
-                //defaults: false,
+                //defaults: true,
             },
 
             {
@@ -94,7 +91,7 @@ let fieldsInput = [
                 name: 'pathMinification',
                 type: 'checkbox',
                 info: `Only affects pathdata outputs formats`,
-                defaults: ['points'],
+                defaults: ['toRelative', 'toShorthands'],
                 values: {
                     'toRelative': 'toRelative',
                     'toShorthands': 'toShorthands',
@@ -122,6 +119,20 @@ let fieldsInput = [
                     step:0.5
                 }
             },
+
+            /*
+            {
+                label:'testSelect',
+                name:'testSelect',
+                type:'select',
+                defaults: ['option2'],
+                values :{
+                    'option1': 'option1',
+                    'option2': 'option2',
+                    'option3': 'option3',
+                }
+            },
+            */
 
             {
                 name: 'scaleTo',
@@ -163,6 +174,24 @@ let fieldsInput = [
                     Y: 0,
                 }
             },
+
+
+            {
+                label: 'Format',
+                name: 'outputFormat',
+                type: 'radio',
+                defaults: ['json'],
+                values: {
+                    'Point Object Array': 'points',
+                    'Nested Array': 'pointsNested',
+                    'Point string': 'pointstring',
+                    'JSON': 'json',
+                    'SVG pathData': 'pathData',
+                    'SVG path': 'path',
+                }
+            },
+
+
         ]
     },
 
@@ -192,6 +221,7 @@ let fieldsOutput = [
                 info: 'Enter polygon point arrays, nested or flat coordinate arrays, point strings',
             },
 
+            
             {
                 label: 'Input',
                 name: 'inputPoly',
@@ -205,26 +235,10 @@ let fieldsOutput = [
                 }
             },
 
-            {
-                label: 'Format',
-                name: 'outputFormat',
-                type: 'radio',
-                defaults: ['points'],
-                values: {
-                    'Point Object Array': 'points',
-                    'Nested Array': 'pointsNested',
-                    'Point string': 'pointstring',
-                    'JSON': 'json',
-                    'SVG pathData': 'pathData',
-                    'SVG path': 'path',
-                }
-            },
 
 
             {
                 name: 'pointOutput',
-
-
                 label: 'Output',
                 type: 'textarea',
                 readonly: true,
@@ -260,7 +274,22 @@ let fieldsOutput = [
                     'data-file': 'poly.svg',
                     'data-tools': 'size copy download'
                 }
+            },
+
+            {
+                name: 'configOut',
+                label: 'Sample JS',
+                type: 'textarea',
+                readonly: true,
+                atts: {
+                    readonly: true,
+                    id: 'configOut',
+                    class: 'input-output code brd-non scrollbar scroll-content fnt-siz-0-75em',
+                    'data-file': 'polySimplifytest.js',
+                    'data-tools': 'size copy download'
+                }
             }
+
 
         ]
     }

@@ -1005,7 +1005,7 @@ function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', meta = fa
      * compile output
      */
 
-    outputFormat = outputFormat.toLowerCase();
+    outputFormat = outputFormat ? outputFormat.toLowerCase() : 'points';
 
     switch (outputFormat) {
 
@@ -1015,8 +1015,11 @@ function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', meta = fa
         case 'json':
 
             // round coordinates
-            outputObj.ptsArr = outputObj.ptsArr.map(pts => pts.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } }
-            ));
+            if(decimals>-1){
+                outputObj.ptsArr = outputObj.ptsArr.map(pts => pts.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } }
+                ));
+
+            }
 
             if (outputFormat === 'pointstring') {
                 outputObj.data = outputObj.ptsArr.map(pts => pts.map(pt => `${pt.x} ${pt.y}`).join(' '));
@@ -1069,9 +1072,13 @@ function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', meta = fa
 
 function polySimplify_core
     (pts, {
-        tolerance = 0.1,
+        tolerance = 0.9,
+
+        // simplifification algorithms
         removeColinear = true,
         useRDP = true,
+        radialDistance = false,
+
         detectRegular = false,
         decimals = -1,
         maxVertices = Infinity,
@@ -1091,7 +1098,13 @@ function polySimplify_core
     } = {}) {
 
     // normalize
-    pts = normalizePointInput(pts);
+    try{
+        pts = normalizePointInput(pts);
+    }catch{
+        console.warn('invalid input');
+        pts = [{x:0, y:0}];
+        return pts;
+    }
 
     // if is compound
     let isCompound = pts[0].length > 1;
@@ -1105,7 +1118,7 @@ function polySimplify_core
 
     let polyArrSimpl = [];
 
-    for(let i=0,l=polyArr.length; i<l; i++ ){
+    for (let i = 0, l = polyArr.length; i < l; i++) {
 
         let pts = polyArr[i];
 
@@ -1119,7 +1132,7 @@ function polySimplify_core
         let ptsSmp = pts;
 
         // line segments or no simplification
-        if (pts.length <= 2 || tolerance === 0) {
+        if (pts.length <= 2 || tolerance === 1) {
             polyArrSimpl.push(ptsSmp);
             continue;
         }
@@ -1143,7 +1156,14 @@ function polySimplify_core
          * or flat segments
          */
 
-        ptsSmp = removeColinear ? simplifyRemoveColinear(ptsSmp, isCompound) : ptsSmp;
+        ptsSmp = removeColinear ? simplifyRemoveColinear(ptsSmp) : ptsSmp;
+
+        /** 
+         * 1.1 radial distance
+         * sloppy but fast
+         */
+
+        ptsSmp = radialDistance ? simplifyPolyRadialDistance(ptsSmp, tolerance) : ptsSmp;
 
         /**
          * check regular polygons
@@ -1160,9 +1180,9 @@ function polySimplify_core
         /**
          * 2. Ramer-Douglas-Peucker simplification
          */
-        if (useRDP) {
+        if (useRDP && tolerance<1) {
 
-            ptsSmp = simplifyPolyRDP(ptsSmp, tolerance, isCompound);
+            ptsSmp = simplifyPolyRDP(ptsSmp, tolerance);
         }
 
         // add to final pts array
@@ -1170,10 +1190,10 @@ function polySimplify_core
 
     }
 
-    let data = getOutputData(polyArr, polyArrSimpl, outputFormat, meta, decimals, toRelative, toShorthands, minifyString, scale, translateX, translateY, alignToZero, scaleToWidth, scaleToHeight);
+    let out = getOutputData(polyArr, polyArrSimpl, outputFormat, meta, decimals, toRelative, toShorthands, minifyString, scale, translateX, translateY, alignToZero, scaleToWidth, scaleToHeight);
 
     // return either sub poly array or single data item
-    return meta ? data : data.data;
+    return meta ? out : (!isCompound ? out.data[0] : out.data);
 }
 
 // Browser global
@@ -1188,7 +1208,7 @@ if (typeof window !== 'undefined') {
 * geometry should be perfectly retained
 */
 
-function simplifyRemoveColinear(pts, isCompound = false) {
+function simplifyRemoveColinear(pts) {
 
     let pt0 = pts[0];
     let ptsSmp = [pt0];
@@ -1239,6 +1259,56 @@ function simplifyRemoveColinear(pts, isCompound = false) {
 }
 
 /**
+ * radialDistance simplification
+ * sloppy but fast
+ */
+
+function simplifyPolyRadialDistance(pts, quality = 0.9){
+
+    let p0 = pts[0];
+    let ptLast = pts[pts.length-1];
+    let pt;
+    let ptsSmp = [p0];
+
+    /**
+     * approximate dimensions
+     * adjust tolerance for 
+     * very small polygons e.g geodata
+     */
+
+    let polyS = reducePoints(pts, 12);
+    let { width, height } = getPolyBBox(polyS);
+
+    // average side lengths
+    let dimAvg= (width+height)/2;
+    let scale = dimAvg/25;
+
+    // convert quality to squaredistance tolerance
+    let tolerance = 1-quality;
+    let toleranceNew = tolerance * (scale);
+    tolerance = toleranceNew**2;
+
+    for (let i = 1, l = pts.length-1; i < l; i++) {
+        pt = pts[i];
+        let dist = getSquareDistance(p0, pt);
+
+        if (dist > tolerance) {
+            ptsSmp.push(pt);
+            p0 = pt;
+        }
+    }
+
+    // add last point - if not coinciding with first point
+    if (p0.x !== ptLast.x && p0.y !== ptLast.y ) {
+
+        ptsSmp.push(pt);
+    }
+
+    return ptsSmp;
+
+}
+
+/**
  * Ramer-Douglas-Peucker-Algorithm
  * for polyline simplification
  * See also: 
@@ -1246,8 +1316,12 @@ function simplifyRemoveColinear(pts, isCompound = false) {
  * and https://karthaus.nl/rdp/
  */
 
-function simplifyPolyRDP(pts, tolerance = 0.1, isCompound = false) {
-    if (pts.length <= 2) return pts;
+function simplifyPolyRDP(pts, quality = 0.9) {
+
+    if (pts.length <= 2 || quality>=1) return pts;
+
+    // convert quality to squaredistance tolerance
+    let tolerance = 1-quality;
 
     /**
      * approximate dimensions
@@ -1257,9 +1331,13 @@ function simplifyPolyRDP(pts, tolerance = 0.1, isCompound = false) {
 
     let polyS = reducePoints(pts, 32);
     let { width, height } = getPolyBBox(polyS);
-    let dimMax = Math.max(width, height);
-    let scale = dimMax <= 10 ? 100000 / dimMax : 1;
-    tolerance /= scale;
+
+    // average side lengths
+    let dimAvg= (width+height)/2;
+    let scale = dimAvg/100;
+
+    let toleranceNew = tolerance * (scale);
+    tolerance = toleranceNew**2;
 
     // Square distance from point to segment
     const segmentSquareDistance = (p, p1, p2) => {
@@ -1310,12 +1388,7 @@ function simplifyPolyRDP(pts, tolerance = 0.1, isCompound = false) {
         }
     }
 
-    /*
-    let areaPointRatio2 = area/ptsSmp.length
-    console.log('areaPointRatio2', areaPointRatio2);
-    */
-
     return ptsSmp;
 }
 
-export { minifyPathData, normalizePointInput, pathDataToD, polySimplify_core as polySimplify, simplifyPolyRDP, simplifyRemoveColinear };
+export { minifyPathData, normalizePointInput, pathDataToD, polySimplify_core as polySimplify, simplifyPolyRDP, simplifyPolyRadialDistance, simplifyRemoveColinear };

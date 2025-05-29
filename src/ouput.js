@@ -78,7 +78,7 @@ export function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', me
      * compile output
      */
 
-    outputFormat = outputFormat.toLowerCase();
+    outputFormat = outputFormat ? outputFormat.toLowerCase() : 'points';
     //decimals=1;
 
     switch (outputFormat) {
@@ -89,8 +89,11 @@ export function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', me
         case 'json':
 
             // round coordinates
-            outputObj.ptsArr = outputObj.ptsArr.map(pts => pts.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } }
-            ));
+            if(decimals>-1){
+                outputObj.ptsArr = outputObj.ptsArr.map(pts => pts.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } }
+                ));
+
+            }
 
             if (outputFormat === 'pointstring') {
                 outputObj.data = outputObj.ptsArr.map(pts => pts.map(pt => `${pt.x} ${pt.y}`).join(' '));

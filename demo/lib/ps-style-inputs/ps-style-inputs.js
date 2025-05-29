@@ -28,14 +28,6 @@ function mutationCallbackInputs(mutations) {
     }
 }
 
-/*
-mutationElInputs.forEach(el=>{
-    const mutationObserverInputs = new MutationObserver(mutationCallbackInputs);
-    mutationObserverInputs.observe(el, mutationOptionsInputs);
-})
-*/
-
-
 
 window.addEventListener('DOMContentLoaded', (e) => {
     //enhanceInputs();
@@ -71,15 +63,9 @@ function enhanceSelects(selector="select"){
             select.classList.remove('input-select-active')
         }
 
-
         //if (parent.classList.contains('input-wrap')) continue
 
-
-
     })
-
-
-
 }
 
 
@@ -333,12 +319,6 @@ function bindToolbar() {
             sizeEl.textContent = getTextareaByteSize(textarea)
 
             trackTextareaValue(textarea, sizeEl);
-
-            /*
-            textarea.addEventListener('input', e => {
-                sizeEl.textContent = getTextareaByteSize(textarea)
-            })
-            */
         }
     })
 
@@ -580,28 +560,7 @@ function enhanceNumberFields() {
 
 
 
-
-        /*
-        input.addEventListener("wheel", (e) => {
-          if (document.activeElement === input) {
-              e.preventDefault(); // Prevent page/parent scrolling
-              let offY = e.deltaY * 0.05;
-              let val = +input.value;
-              offY = Math.round(offY / step) * step;
-              let newVal = +(val - offY).toFixed(8);
-      
-              if (newVal < min) newVal = min;
-              if (newVal > max) newVal = max;
-              input.value = newVal;
-  
-              input.dispatchEvent(new Event('input'))
-          }
-      });
-      */
-
-
         //{passive:true}
-
 
 
         /*

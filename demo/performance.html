@@ -34,7 +34,7 @@ import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPoly
          t0=performance.now()
         let ptsSimple = simplify(points, tolerance, highQuality);
         t1 = performance.now()-t0;
-        console.log(t1, ptsSimple);
+        console.log('simplify.js', t1, ptsSimple);
 
 
 
@@ -43,13 +43,13 @@ import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPoly
          */
          let options = {
             removeColinear: true,
-            useRDP: false,
+            useRDP: true,
             tolerance:tolerance,
         }
         t0=performance.now()
         let ptsSimple2 = polySimplify(points, options)
         t1 = performance.now()-t0;
-        console.log(t1, ptsSimple2);
+        console.log('poly simplify', t1, ptsSimple2);
 
 
 

@@ -71,6 +71,10 @@ body {}
     font-size: 1.3em;
 }
 
+.svgPreview * {
+    stroke-width: 1% !important;
+    stroke: #ccc;
+}
 
 .showMarkers * {
     marker-start: url(#markerStart);

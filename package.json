@@ -1,8 +1,8 @@
 {
   "name": "poly-simplify",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
-  "main": "dist/poly-simplify.js",
+  "main": "dist/poly-simplify.esm.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/herrstrietzel/poly-simplify.git"
