@@ -3,30 +3,29 @@
 [![gzipped size](https://img.shields.io/bundlephobia/minzip/poly-simplify)](https://bundlephobia.com/result?p=poly-simplify)
 [![minified size](https://img.shields.io/bundlephobia/min/poly-simplify)](https://bundlephobia.com/result?p=poly-simplify)
 [![license](https://img.shields.io/npm/l/poly-simplify)](https://www.npmjs.com/package/poly-simplify)
-[![CDN](https://img.shields.io/badge/CDN-jsDelivr-E84D3D?style=flat)](https://cdn.jsdelivr.net/npm/poly-simplify@latest/poly-simplify.min.js)
+[![CDN](https://img.shields.io/badge/CDN-jsDelivr-E84D3D?style=flat)](https://cdn.jsdelivr.net/npm/poly-simplify@latest/+esm)
 
 <p align="center" style="text-align:center">
 <img width="100" height="100" style="display:inline-block" src="./favicon.svg">
+<h1 align="center">poly-simplify</h1>
 </p> 
 
-# poly-simplify
-Simplify/reduce polylines/polygon vertices in JS
+Dependancy free library to simplify polylines or polygon vertices in JS. 
 
 This library is *obviously* heavily inspired by Volodymyr Agafonkin's brilliant [»simplify.js«](https://github.com/mourner/simplify-js) library which has become kind of a standard.  
 
 
 ## Features
 * **input normalisation:** you can pass pretty much any reasonable polygon notation such as: 
-  * point-object arrays – so `[{x:0, y:10}, {x:1, y:20}]`  
-  * stringified point data (as provided by SVG `<polygon>` `point` attributes – `0 10 1 20`  
+  * **point-object arrays** – so `[{x:0, y:10}, {x:1, y:20}]`  
+  * **stringified point data** (as provided by SVG `<polygon>` `point` attributes – `0 10 1 20`  
   * **nested arrays** like `[[0 10], [1 20]]`  
   * **JSON** stringified presentations of point arrays like `[{"x":0,"y":10},{"x":1,"y":20}]`  
   * **SVG** pathdata: `M0 0 100 200z`
 
-* **Relative Quality threshold:** simplification is controlled via a *relative* quality parameter similar to raster image compression logics – super tiny geodata polygons won't get distorted
+* **Relative or absolute quality threshold:** simplification is controlled via a *relative* quality parameter similar to raster image compression logics – super tiny geoData polygons won't get distorted
 
-* **SVG**
-  * node property data (e.g SVG polygons) – constructors like SVGPoint are normalized to get a "decoupled" point array  
+* **SVG**: node property data (e.g SVG polygons) – constructors like SVGPoint are normalized to get a "decoupled" point array  
 
 * **Supports compound shapes/paths** intersecting polygons interpreted as cut-out shapes
 
@@ -40,7 +39,7 @@ This library is *obviously* heavily inspired by Volodymyr Agafonkin's brilliant 
 * "RD" - simplify by radial distance: removes short segments. Ideal for more aggressive simplifications
 * "RDP" – Ramer-Douglas-Peucker algorithm
 * "VW" – Visvalingam-Whyatt algorithm
-* max vertice simplification: simply omitts vertices to get the desired point count
+* max vertices simplification: simply omits vertices to get the desired point count – very fast but sloppy
 
 
 

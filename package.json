@@ -19,7 +19,8 @@
   "keywords": [
     "polygon",
     "simplification",
-    "Ramer-Douglas-Peucker"
+    "Ramer-Douglas-Peucker",
+    "Visvigalim-Whyatt"
   ],
   "author": "herrstrietzel",
   "license": "MIT",
