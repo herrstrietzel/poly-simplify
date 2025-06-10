@@ -114,14 +114,23 @@ async function generateFilterInputs(inputs, settings = null) {
                 let cacheKey = currentKey;
                 let currentValCache = settings[cacheKey];
 
+
                 // && currentValCache!==undefined
                 if (useCache) {
 
                     if (type === 'checkbox') {
+
+                        if(currentValCache===undefined){
+                            //currentValCache = settings[currentVal];
+                        }
+
                         //currentValCache = settings[cacheKey];
                         defaults = currentValCache!==undefined ? [currentValCache] : defaults;
                         currentVal = (currentValCache === true || currentValCache === false) ? currentKey :
                             (currentValCache ? currentValCache : currentVal);
+
+                        //console.log(isMulti, cacheKey, 'currentKey', currentKey, currentValCache, defaults);
+
 
                     }
 
@@ -137,6 +146,7 @@ async function generateFilterInputs(inputs, settings = null) {
                         // prepend name for multi fields
                         cacheKey = isMulti ? name + currentKey : cacheKey;
                         currentValCache = settings[cacheKey] 
+
                         currentVal = currentValCache!==undefined ? currentValCache : currentVal;
                     }
                 }
@@ -484,7 +494,6 @@ function appendInputs(inputs, selection = [], target, localStorageName = '') {
     // add event listeners
     //bindInputs()
 
-
     //enhance
     enhanceInputs()
 
@@ -529,7 +538,8 @@ function bindResetBtn(btnReset = null, localStorageName = '') {
 
     if (btnReset) {
         btnReset.addEventListener('click', e => {
-            resetSettings(localStorageName)
+            resetSettings(localStorageName);
+            window.location.reload();
         })
     }
 }

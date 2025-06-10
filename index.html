@@ -16,12 +16,47 @@
     <link rel="stylesheet" href="demo/lib/ps-style-inputs/ps-style-inputs.css">
 
 
+<script>
+
+ function renderPoint(
+    svg,
+    coords,
+    fill = "red",
+    r = "1%",
+    opacity = "1",
+    title = '',
+    render = true,
+    id = "",
+    className = ""
+) {
+    if (Array.isArray(coords)) {
+        coords = {
+            x: coords[0],
+            y: coords[1]
+        };
+    }
+    let marker = `<circle class="${className}" opacity="${opacity}" id="${id}" cx="${coords.x}" cy="${coords.y}" r="${r}" fill="${fill}">
+  <title>${title}</title></circle>`;
+
+    if (render) {
+        svg.insertAdjacentHTML("beforeend", marker);
+    } else {
+        return marker;
+    }
+}
+
+
+
+</script>
+
+
 
     <!-- UI assets -->
     <script src="demo/lib/ps-icons/ps-icons.js" defer></script>
     <script src="demo/lib/ps-style-inputs/ps-style-inputs.js" defer></script>
 
 
+    <script src="demo/lib/elzoomo/elzoomo.js"></script>
 
     <!-- 
         <script src="demo/lib/ps-textarea-tools/ps-textarea-tools.js" defer></script>
@@ -72,13 +107,13 @@
                 </a>
             </header>
 
-            <div id="rel" class="preview rel pnt-evn-non">
+            <div id="rel" class="preview rel --pnt-evn-non elzoomo-wrp">
 
                 <!-- preview path -->
-                <svg id="svgPreview" class="svgPreview" viewBox="0 0 100 100" fill="none" stroke="#ccc">
-                    <path id="pathPreview" d="" />
-                    <polygon id="polygonPreview" points="" />
-                    <polyline id="polylinePreview" points="" />
+                <svg id="svgPreview" class="svgPreview" viewBox="0 0 100 100" fill="none" stroke="#ccc"  stroke-width="5px" data-zoom='{"minScale":1,"maxScale":100,"zoom":1,"zoomStep":1.001, "scaleStroke":true}'>
+                    <path id="pathPreview" d="" vector-effect="non-scaling-stroke" />
+                    <polygon id="polygonPreview" points=""  vector-effect="non-scaling-stroke" />
+                    <polyline id="polylinePreview" points="" vector-effect="non-scaling-stroke" />
                 </svg>
 
                     <p class="pointCount-wrp">

@@ -475,6 +475,10 @@ export function pathDataToAbsoluteOrRelative(pathData, toRelative = false) {
     }
 
     pathData[0].type = 'M';
+
+    //round
+    pathData = pathData.map(com=>{return {type:com.type, values:com.values.map(val=>+val.toFixed(9))} });
+
     //console.log('pathData rel', pathData[0], pathData);
     return pathData;
 }
@@ -576,7 +580,7 @@ export function pathDataToD(pathData, optimize = 1) {
     pathData = JSON.parse(JSON.stringify(pathData));
 
     let beautify = optimize > 1;
-    let minify = beautify ? false : true;
+    let minify = beautify || optimize===0 ? false : true;
 
     // Convert first "M" to "m" if followed by "l" (when minified)
     if (pathData[1].type === "l" && minify) {

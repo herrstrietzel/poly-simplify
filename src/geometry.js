@@ -24,6 +24,49 @@ export function detectRegularPolygon(pts) {
     return isRegular;
 }
 
+/**
+ * reorder vertices to
+ * avoid mid points on colinear segments
+ */
+
+export function sortPolygonLeftTopFirst(pts, isPolygon=null) {
+    //return pts;
+    if (pts.length === 0) return pts;
+    
+    isPolygon = isPolygon===null ? isClosedPolygon(pts) : isPolygon;
+
+    if(!isPolygon) return pts;
+    
+    let firstIndex = 0;
+    for (let i = 1,l=pts.length; i < l; i++) {
+        let current = pts[i];
+        let first = pts[firstIndex];
+        if (current.x < first.x || (current.x === first.x && current.y < first.y)) {
+            firstIndex = i;
+        }
+    }
+    
+    let ptsN = pts.slice(firstIndex).concat(pts.slice(0, firstIndex));
+    return ptsN;
+}
+
+/**
+ * check whether a polygon is likely 
+ * to be closed 
+ * or an open polyline 
+ */
+export function isClosedPolygon(pts, reduce=24){
+
+    let ptsR = reducePoints(pts, reduce);
+    let { width, height } = getPolyBBox(ptsR);
+    let dimAvg = Math.max(width, height);
+    let closingThresh = (dimAvg / pts.length) ** 2
+    let closingDist = getSquareDistance(pts[0], pts[pts.length - 1]);
+
+    return closingDist < closingThresh;
+}
+
+
 
 /**
  * reduce polypoints
@@ -51,7 +94,7 @@ export function reducePoints(points, maxPoints = 48) {
 }
 
 
-export function getPolygonArea(points, absolute = false) {
+export function getPolygonArea(points, absolute = true) {
     let area = 0;
     for (let i = 0, len = points.length; len && i < len; i++) {
         let addX = points[i].x;

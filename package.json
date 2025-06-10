@@ -1,6 +1,6 @@
 {
   "name": "poly-simplify",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "main": "dist/poly-simplify.esm.js",
   "repository": {
@@ -25,6 +25,7 @@
   "license": "MIT",
   "description": "Simplify/reduce polylines/polygon vertices in JS",
   "dependencies": {
+    "heap": "^0.2.7",
     "terser": "^5.39.0"
   },
   "bugs": {

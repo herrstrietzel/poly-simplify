@@ -7,33 +7,46 @@
     <title>Document</title>
 </head>
 
+<svg id="svgPreview">
+    <polygon id="poly1" stroke="#ccc" fill="none" stroke-width="2" />
+    <polygon id="poly2" stroke="blue" fill="none" stroke-width="1" />
+</svg>
+
 <body>
 
+    <script src="../dist/poly-simplify.min.js"></script>
+
+    
     <script src="https://mourner.github.io/simplify-js/website/test-data.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/simplify-js@1.2.4/simplify.min.js"></script>
 
     <script type="module">
 
-import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPolyRDP, minifyPathData, pathDataToD } from '../dist/poly-simplify.esm.js';
+
+/*
+        import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPolyRDP, minifyPathData, pathDataToD } from '../dist/poly-simplify.esm.js';
+        */
 
 
 
-        let tolerance=0.1;
+        let tolerance = 0.5;
         let highQuality = true;
 
         let t0, t1;
 
 
+        let ptsNorm = normalizePointInput(`m 27.46 82.29 l 0 0 l -1.849 -5.69 l -1.848 -5.69 l -1.849 -5.689 l -1.849 -5.69 l -1.848 -5.689 l -1.849 -5.69 l -1.848 -5.689 l -1.85 -5.69 l 4.84 -3.516 l 4.84 -3.517 l 4.839 -3.516 l 4.84 -3.517 l 4.84 -3.517 l 4.84 -3.516 l 4.84 -3.516 l 4.84 -3.516 l 4.84 3.516 l 4.839 3.516 l 4.84 3.516 l 4.841 3.517 l 4.841 3.517 l 4.84 3.516 l 4.84 3.517 l 4.839 3.516 l -1.848 5.69 l -1.849 5.689 l -1.849 5.69 l -1.848 5.689 l -1.849 5.69 l -1.848 5.689 l -1.85 5.69 l -1.849 5.69 l -4.624 0 l -4.623 0 l -4.623 0 l -4.623 0 l -4.623 0 l -4.623 0 l -4.623 0 l -4.624 0 l -1.358 0 l -1.36 0 l -1.359 0 l -1.36 0 l -1.359 0 h -1.359 l -1.359 0`);
 
+        console.log(ptsNorm);
 
 
         /**
          * simplify.js
          */
-         t0=performance.now()
+        t0 = performance.now()
         let ptsSimple = simplify(points, tolerance, highQuality);
-        t1 = performance.now()-t0;
+        t1 = performance.now() - t0;
         console.log('simplify.js', t1, ptsSimple);
 
 
@@ -41,18 +54,46 @@ import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPoly
         /**
          * poly simplify
          */
-         let options = {
-            removeColinear: true,
-            useRDP: true,
-            tolerance:tolerance,
+        let options = {
+            
+            overrideQuality: true,
+            RC: false,
+            VW: false,
+            RD: false,
+            RDP: false,
+            decimals:3,
+            maxPoints:100,
+            //toMaxVertices:true,
+            quality: 0.8,
         }
-        t0=performance.now()
+
+        t0 = performance.now()
         let ptsSimple2 = polySimplify(points, options)
-        t1 = performance.now()-t0;
-        console.log('poly simplify', t1, ptsSimple2);
+        t1 = performance.now() - t0;
+        console.log('poly simplify', t1, ptsSimple2, points.length);
+
+
+        poly1.setAttribute('points', ptsSimple.map(pt => { return `${pt.x} ${pt.y}` }))
+        poly2.setAttribute('points', ptsSimple2.map(pt => { return `${pt.x} ${pt.y}` }))
 
 
 
+        adjustViewBox(svgPreview);
+
+        function adjustViewBox(svg, padding = 0, decimals = 3) {
+            let bb = svg.getBBox();
+            let [x, y, width, height] = [bb.x, bb.y, bb.width, bb.height];
+
+            if (padding) {
+                let dimMax = Math.max(width + padding, height + padding)
+                x -= (dimMax - width) / 2
+                y -= (dimMax - height) / 2
+                width = dimMax
+                height = dimMax
+            }
+
+            svg.setAttribute("viewBox", [x, y, width, height].map(val => { return +val.toFixed(decimals) }).join(" "));
+        }
 
 
 

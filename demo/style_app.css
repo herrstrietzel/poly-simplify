@@ -71,21 +71,34 @@ body {}
     font-size: 1.3em;
 }
 
+:root{
+    --color-stroke: #ccc;
+}
+
 .svgPreview * {
-    stroke-width: 1% !important;
-    stroke: #ccc;
+    stroke: var(--color-stroke);
+    stroke-width: 2px;
+}
+
+.svgPreview circle {
+    stroke: none!important
 }
 
 .showMarkers * {
     marker-start: url(#markerStart);
     marker-mid: url(#markerRound);
-    stroke-width: 1% !important;
+    stroke: #ccc;
+    stroke-width: inherit;
 }
 
-.showFill * {
+
+.showFill path,
+.showFill polygon,
+.showFill polyline
+{
     fill: #ccc;
+    stroke: transparent;
 }
-
 
 
 .svgMarker {

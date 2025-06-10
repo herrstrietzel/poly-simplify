@@ -14,47 +14,86 @@ let fieldsInput = [
     },
 
     {
-        label: 'Simplification',
+        label: 'Quality',
+        info: 'Quality &gt;1 shows the original polygon',
         //type: 'details',
         ////open: true,
         fields: [
 
             {
-                name: 'tolerance',
+                name: 'quality',
                 label: 'quality',
                 type: 'range',
                 defaults: 0.9,
                 atts: {
                     min: 0,
-                    max: 1,
+                    max: 1.1,
                     step: 0.01,
                 }
             },
+            {
+                name: 'tolerance',
+                label: 'Absolute tolerance',
+                labelPosition: 'top',
+                info: 'Absolute threshold: e.g 1px or 100v (reduce to 100 vertices). Gets reset by quality slider!',
+                type: 'text',
+                defaults: '',
+                atts: {
+                    min: 0,
+                    max: 30,
+                    step: 0.05,
+                }
+
+            },
 
             {
-                name: 'removeColinear',
+                name: 'RC',
                 label: 'remove colinear',
                 type: 'checkbox',
                 defaults: true,
             },
 
             {
-                name: 'radialDistance',
+                name: 'RD',
                 label: 'use radial distance simplification',
                 type: 'checkbox',
                 defaults: true,
             },
 
             {
-                name: 'useRDP',
-                label: 'use Ramer-Douglas-Peucker',
+                name: 'RDP',
+                label: 'Ramer-Douglas-Peucker',
                 type: 'checkbox',
                 defaults: true,
             },
 
             {
-                name: 'toMaxVertices',
-                label: 'To max vertices',
+                name: 'VW',
+                label: 'Visvalingam',
+                type: 'checkbox',
+                defaults: false,
+            },
+
+            {
+                name: 'optimizeStartingPoint',
+                label: 'Optimize starting points',
+                type: 'checkbox',
+                defaults: true,
+            },
+
+            {
+                name: 'overrideQuality',
+                info: 'Allows custom simplification that would otherwise be adjusted by the quality value.',
+                label: 'override quality',
+                type: 'checkbox',
+                defaults: true,
+            },
+
+
+            {
+                name: 'skipPoints',
+                label: 'skip points',
+                info: 'Skips points to reduce polygon to desired point limit. Very <em>fast</em> but also <em>inaccurate!</em>',
                 type: 'checkbox',
                 //defaults: true,
             },
@@ -68,7 +107,7 @@ let fieldsInput = [
                 atts: {
                     min: 0,
                     max: 1024,
-                    step:1,
+                    step: 1,
                 }
             },
 
@@ -82,7 +121,7 @@ let fieldsInput = [
                 atts: {
                     min: -1,
                     max: 8,
-                    step:1
+                    step: 1
                 }
             },
 
@@ -98,6 +137,7 @@ let fieldsInput = [
                     'minifyString': 'minifyString',
                 }
             },
+
         ]
     },
 
@@ -106,33 +146,20 @@ let fieldsInput = [
     {
         label: 'Scaling and alignment',
         info: 'Useful for tiny poly data such as geodata polygons.',
-        fields:[
+        fields: [
             {
                 name: 'scale',
-                label:'scale',
-                labelPosition:'right',
-                type:'number',
+                label: 'scale',
+                labelPosition: 'right',
+                type: 'number',
                 defaults: 1,
-                atts:{
+                atts: {
                     value: 1,
-                    min:1,
-                    step:0.5
+                    min: 1,
+                    step: 0.5
                 }
             },
 
-            /*
-            {
-                label:'testSelect',
-                name:'testSelect',
-                type:'select',
-                defaults: ['option2'],
-                values :{
-                    'option1': 'option1',
-                    'option2': 'option2',
-                    'option3': 'option3',
-                }
-            },
-            */
 
             {
                 name: 'scaleTo',
@@ -141,7 +168,7 @@ let fieldsInput = [
                 type: 'number',
                 defaults: 0,
                 atts: {
-                    min:1,
+                    min: 1,
                     step: 1
                 },
                 values: {
@@ -152,10 +179,10 @@ let fieldsInput = [
             },
 
             {
-                name:'alignToZero',
-                label:'align to zero',
-                labelPosition:'right',
-                type:'checkbox'
+                name: 'alignToZero',
+                label: 'align to zero',
+                labelPosition: 'right',
+                type: 'checkbox'
             },
 
             {
@@ -166,7 +193,7 @@ let fieldsInput = [
                 //defaults: 0,
                 atts: {
                     //class: 'inputTrans',
-                    min:-1000,
+                    min: -1000,
                     step: 1
                 },
                 values: {
@@ -221,7 +248,7 @@ let fieldsOutput = [
                 info: 'Enter polygon point arrays, nested or flat coordinate arrays, point strings',
             },
 
-            
+
             {
                 label: 'Input',
                 name: 'inputPoly',
@@ -251,16 +278,18 @@ let fieldsOutput = [
                 }
             },
 
+
             {
                 label: 'Preview rendering',
-                name:'previewRendering',
+                name: 'previewRendering',
                 type: 'checkbox',
-                defaults: ['showMarkers'],
+                defaults: ['showMarkers', 'showFill'],
                 values: {
-                    'show Points': 'showMarkers',
-                    'show Fill': 'showFill',
+                    'showMarkers': 'showMarkers',
+                    'showFill': 'showFill',
                 }
             },
+
 
             {
                 name: 'svgOutput',

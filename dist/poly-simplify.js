@@ -445,6 +445,8 @@
 
         pathData[0].type = 'M';
 
+        pathData = pathData.map(com=>{return {type:com.type, values:com.values.map(val=>+val.toFixed(9))} });
+
         return pathData;
     }
 
@@ -540,7 +542,7 @@
         pathData = JSON.parse(JSON.stringify(pathData));
 
         let beautify = optimize > 1;
-        let minify = beautify ? false : true;
+        let minify = beautify || optimize===0 ? false : true;
 
         // Convert first "M" to "m" if followed by "l" (when minified)
         if (pathData[1].type === "l" && minify) {
@@ -756,19 +758,17 @@
             // check compoundPath
             let pathData = parsePathNorm(pts);
             let suPaths = splitSubpaths(pathData);
-            isCompound = suPaths.length>1;
+            isCompound = suPaths.length > 1;
 
             let ptArr = [];
-            if(isCompound){
-                suPaths.forEach(pathData=>{
-
+            if (isCompound) {
+                suPaths.forEach(pathData => {
                     let ptsSub = pathDataToPoly(pathData);
-
                     ptArr.push(ptsSub);
 
                 });
 
-            }else {
+            } else {
                 ptArr = pathDataToPoly(pathData);
             }
 
@@ -778,9 +778,19 @@
         // 2.1 check if it's JSON
         let isJSON = isString ? pts.startsWith('{') || pts.startsWith('[') : false;
 
+        function fixJsObjectString(str) {
+            return str.replace(/([{,])\s*(\w+)\s*:/g, '$1"$2":');
+        }
+
         // 2.1.1: if JSON – parse data
         if (isJSON) {
-            pts = JSON.parse(pts);
+            try {
+                pts = JSON.parse(pts);
+
+            } catch {
+                // convert to point array
+                pts = JSON.parse(fixJsObjectString(pts));
+            }
             isString = false;
 
         }
@@ -806,8 +816,33 @@
         // 3.1: is nested array – x/y grouped in sub arrays
         let isNested = isArray && pts[0].length === 2;
 
+        // has su polys
+        let isCompoundPoly = !isNested && isArray && Array.isArray(pts[0]);
+
+        // grouped in x/y pairs
+        let isCompoundPolyNested = isCompoundPoly && pts[0][0].length === 2;
+
+        // flat point value array
+        let isCompoundPolyFlat = isCompoundPoly && !isCompoundPolyNested && pts[0].length > 2 && !pts[0][0].hasOwnProperty('x');
+
+        /*
+        let isCompoundPolyObj = isCompoundPoly && !isCompoundPolyNested && pts[0].length>2 && pts[0][0].hasOwnProperty('x');
+
+        console.log('isCompoundPolyObj', isCompoundPolyObj, 'isCompoundPolyFlat', isCompoundPolyFlat, 'isCompoundPolyNested', isCompoundPolyNested, isCompoundPoly, isNested);
+        */
+
+        if (isCompoundPolyFlat || isCompoundPolyNested) {
+            let ptsN = [];
+            pts.forEach(sub => {
+                let pts = isCompoundPolyFlat ? toPointArray(sub) : sub.map((pt) => { return { x: pt[0], y: pt[1] }; });
+                ptsN.push(pts);
+            });
+
+            pts = ptsN;
+        }
+
         // convert to point array
-        if (isNested) {
+        else if (isNested) {
             pts = pts.map((pt) => {
                 return { x: pt[0], y: pt[1] };
             });
@@ -845,10 +880,52 @@
     }
 
     /**
+     * reorder vertices to
+     * avoid mid points on colinear segments
+     */
+
+    function sortPolygonLeftTopFirst(pts, isPolygon=null) {
+
+        if (pts.length === 0) return pts;
+        
+        isPolygon = isPolygon===null ? isClosedPolygon(pts) : isPolygon;
+
+        if(!isPolygon) return pts;
+        
+        let firstIndex = 0;
+        for (let i = 1,l=pts.length; i < l; i++) {
+            let current = pts[i];
+            let first = pts[firstIndex];
+            if (current.x < first.x || (current.x === first.x && current.y < first.y)) {
+                firstIndex = i;
+            }
+        }
+        
+        let ptsN = pts.slice(firstIndex).concat(pts.slice(0, firstIndex));
+        return ptsN;
+    }
+
+    /**
+     * check whether a polygon is likely 
+     * to be closed 
+     * or an open polyline 
+     */
+    function isClosedPolygon(pts, reduce=24){
+
+        let ptsR = reducePoints$1(pts, reduce);
+        let { width, height } = getPolyBBox$1(ptsR);
+        let dimAvg = Math.max(width, height);
+        let closingThresh = (dimAvg / pts.length) ** 2;
+        let closingDist = getSquareDistance(pts[0], pts[pts.length - 1]);
+
+        return closingDist < closingThresh;
+    }
+
+    /**
      * reduce polypoints
      * for sloppy dimension approximations
      */
-    function reducePoints(points, maxPoints = 48) {
+    function reducePoints$1(points, maxPoints = 48) {
         if (!Array.isArray(points) || points.length <= maxPoints) return points;
 
         // Calculate how many points to skip between kept points
@@ -869,7 +946,7 @@
         return reduced;
     }
 
-    function getPolygonArea(points, absolute = false) {
+    function getPolygonArea(points, absolute = true) {
         let area = 0;
         for (let i = 0, len = points.length; len && i < len; i++) {
             let addX = points[i].x;
@@ -881,7 +958,7 @@
         return absolute ? Math.abs(area) : area;
     }
 
-    function getPolyBBox(vertices) {
+    function getPolyBBox$1(vertices) {
         let xArr = vertices.map(pt => pt.x);
         let yArr = vertices.map(pt => pt.y);
         let left = Math.min(...xArr);
@@ -913,7 +990,7 @@
         let ptsArr = isCompound ? pts : [pts];
         let ptsFlat = isCompound ? pts.flat() : pts;
 
-        ({ x, y, width, height } = getPolyBBox(ptsFlat));
+        ({ x, y, width, height } = getPolyBBox$1(ptsFlat));
 
         ptsArr.forEach((pts,p) => {
             scale = scaleToWidth ? scaleToWidth / width : (scaleToHeight ? scaleToHeight / height : scale);
@@ -941,7 +1018,7 @@
 
     // output helper
     function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', meta = false, decimals = -1, toRelative = false,
-        toShorthands = false, minifyString = false, scale = 1, translateX = 0, translateY = 0, alignToZero = false, scaleToWidth = 0, scaleToHeight = 0) {
+        toShorthands = false, minifyString = false, scale = 1, translateX = 0, translateY = 0, alignToZero = false, scaleToWidth = 0, scaleToHeight = 0, isCompound=false) {
 
         let outputObj = {
             data: [],
@@ -975,33 +1052,50 @@
             // simplified vertices count
             let totalSmpl = ptsSmp.length;
             outputObj.count += totalSmpl;
-
             outputObj.ptsArr.push(ptsSmp);
 
             let isPolygon = false;
 
             // check if closed
             if (meta) {
-
-                let areaOriginal = getPolygonArea(pts, true);
-                let areaptsSmp = getPolygonArea(ptsSmp, true);
-                outputObj.areaOriginal = areaOriginal;
-                outputObj.areaptsSmp = areaptsSmp;
-
-                let ptsR = reducePoints(pts, 32);
-                let { width, height } = getPolyBBox(ptsR);
+                let ptsR = reducePoints$1(pts, 32);
+                let { width, height } = getPolyBBox$1(ptsR);
                 let dimAvg = Math.max(width, height);
                 let closingThresh = (dimAvg / pts.length) ** 2;
 
                 let closingDist = getSquareDistance(pts[0], pts[pts.length - 1]);
                 isPolygon = closingDist < closingThresh;
                 outputObj.isPolygon.push(isPolygon);
-
-                // area deviation in percent
-                let areaDiff = meta ? +(100 / areaptsSmp * Math.abs(areaOriginal - areaptsSmp)).toFixed(3) : 0;
-                outputObj.areaDiff += areaDiff;
             }
 
+        }
+
+        /**
+         * approximate minimum 
+         * floating point precision
+         * to prevent distortions
+         */
+
+        if(decimals>-1 && decimals<=3){
+
+            let polySimplFlat = polyArrSimpl.flat();
+            let polyAppr = reducePoints$1(polySimplFlat, 24);
+
+            let { width, height } = getPolyBBox$1(polyAppr);
+            let dimAvg = (width + height) / 2;
+
+            if(dimAvg>500) {
+                decimals=0;
+            }else {
+                let complexity = polySimplFlat.length/dimAvg;
+                let ratLength = dimAvg / 1000;
+                let decimalsMinLen = Math.ceil(1 / ratLength).toString().length;
+                let decimalsMinCompl = Math.ceil(complexity).toString().length;
+            
+                let decimalsMin = Math.ceil((decimalsMinLen+decimalsMinCompl)/2);
+
+                decimals = decimals > -1 && decimals < decimalsMin ? decimalsMin : decimals;
+            }
         }
 
         /**
@@ -1021,7 +1115,6 @@
                 if(decimals>-1){
                     outputObj.ptsArr = outputObj.ptsArr.map(pts => pts.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } }
                     ));
-
                 }
 
                 if (outputFormat === 'pointstring') {
@@ -1029,14 +1122,24 @@
                 }
 
                 else if (outputFormat === 'points') {
+                    if(!isCompound) {
+                        outputObj.ptsArr = outputObj.ptsArr[0];
+                    }
+
                     outputObj.data = outputObj.ptsArr;
                 }
 
                 else if (outputFormat === 'pointsnested') {
                     outputObj.data = outputObj.ptsArr.map(pts => pts.map(pt => [pt.x, pt.y]));
+                    if(!isCompound) {
+                        outputObj.data = outputObj.data[0];
+                        outputObj.ptsArr = outputObj.ptsArr[0];
+                    }
+
                 }
 
                 else if (outputFormat === 'json') {
+                    if(!isCompound) outputObj.ptsArr = outputObj.ptsArr[0];
                     outputObj.data = JSON.stringify(outputObj.ptsArr);
                 }
 
@@ -1064,6 +1167,7 @@
 
                 if (outputFormat === 'path') {
                     outputObj.data = [pathDataToD(pathDataCompound, (minifyString ? 1 : 0))];
+                    if(!isCompound) outputObj.data = outputObj.data[0];
                 } else {
                     outputObj.data = pathDataCompound;
                 }
@@ -1073,137 +1177,6 @@
         return outputObj
     }
 
-    function polySimplify_core
-        (pts, {
-            tolerance = 0.9,
-
-            // simplifification algorithms
-            removeColinear = true,
-            useRDP = true,
-            radialDistance = false,
-
-            detectRegular = false,
-            decimals = -1,
-            maxVertices = Infinity,
-            toMaxVertices = false,
-            outputFormat = 'points',
-            scale = 1,
-            alignToZero = false,
-            translateX = 0,
-            translateY = 0,
-            scaleToWidth = 0,
-            scaleToHeight = 0,
-            meta = false,
-            // options for pathData output
-            toRelative = false,
-            toShorthands = false,
-            minifyString = false
-        } = {}) {
-
-        // normalize
-        try{
-            pts = normalizePointInput(pts);
-        }catch{
-            console.warn('invalid input');
-            pts = [{x:0, y:0}];
-            return pts;
-        }
-
-        // if is compound
-        let isCompound = pts[0].length > 1;
-
-        /**
-         * normalize to array for 
-         * compound polygons or paths
-         */
-
-        let polyArr = isCompound ? pts : [pts];
-
-        let polyArrSimpl = [];
-
-        for (let i = 0, l = polyArr.length; i < l; i++) {
-
-            let pts = polyArr[i];
-
-            // regular polygon detection
-            let isRegular = false;
-
-            // no points - exit
-            if (!pts.length) return [];
-
-            // collect simplified point array
-            let ptsSmp = pts;
-
-            // line segments or no simplification
-            if (pts.length <= 2 || tolerance === 1) {
-                polyArrSimpl.push(ptsSmp);
-                continue;
-            }
-
-            /**
-             * 0. reduce vertices to 
-             * maximum limit
-             * brute force but very fast for huge 
-             * point arrays
-             */
-            if (toMaxVertices && maxVertices < Infinity) {
-
-                ptsSmp = reducePoints(pts, maxVertices);
-                polyArrSimpl.push(ptsSmp);
-                continue
-            }
-
-            /**
-             * 1. lossless simplification
-             * only remove zero-length segments/coinciding points
-             * or flat segments
-             */
-
-            ptsSmp = removeColinear ? simplifyRemoveColinear(ptsSmp) : ptsSmp;
-
-            /** 
-             * 1.1 radial distance
-             * sloppy but fast
-             */
-
-            ptsSmp = radialDistance ? simplifyPolyRadialDistance(ptsSmp, tolerance) : ptsSmp;
-
-            /**
-             * check regular polygons
-             * if it's regular:
-             * we skip RDP simplification
-             */
-
-            if (detectRegular) {
-
-                isRegular = detectRegularPolygon(ptsSmp);
-                if (isRegular) useRDP = false;
-            }
-
-            /**
-             * 2. Ramer-Douglas-Peucker simplification
-             */
-            if (useRDP && tolerance<1) {
-
-                ptsSmp = simplifyPolyRDP(ptsSmp, tolerance);
-            }
-
-            // add to final pts array
-            polyArrSimpl.push(ptsSmp);
-
-        }
-
-        let out = getOutputData(polyArr, polyArrSimpl, outputFormat, meta, decimals, toRelative, toShorthands, minifyString, scale, translateX, translateY, alignToZero, scaleToWidth, scaleToHeight);
-
-        // return either sub poly array or single data item
-        return meta ? out : (!isCompound ? out.data[0] : out.data);
-    }
-
-    // Browser global
-    if (typeof window !== 'undefined') {
-        window.polySimplify = polySimplify_core;
-    }
-
     /**
     * "lossless" simplification:
     * remove zero length or 
@@ -1211,51 +1184,65 @@
     * geometry should be perfectly retained
     */
 
-    function simplifyRemoveColinear(pts) {
+    function simplifyRC(pts) {
 
+        if (pts.length < 3) return pts;
+
+        let ptsSmp = [pts[0]];
         let pt0 = pts[0];
-        let ptsSmp = [pt0];
+        let pt1, pt2;
+        let ptL = pts[pts.length-1];
+        let tolerance = 1;
 
+        // First pass: Remove colinear points and collect triangle areas
         for (let i = 2, l = pts.length; i < l; i++) {
-            let pt1 = pts[i - 1];
-            let pt2 = pts[i];
-            let squareDistance = 0;
+            pt1 = pts[i - 1];
+            pt2 = pts[i];
 
-            // collinear segments
-            if ((pt0.x === pt1.x && pt0.y !== pt1.y) || (pt0.x !== pt1.x && pt0.y === pt1.y)) {
+            // Skip zero-length segments
+            if (pt1.x === pt2.x && pt1.y === pt2.y) continue;
 
-                // not all segments are flat - add mid point
-                if (!(pt2.x === pt1.x && pt2.y !== pt1.y) && !(pt2.x !== pt1.x && pt2.y === pt1.y)) {
+            // Check for vertical/horizontal segments
+            let isVertical = (pt0.x === pt1.x);
+            let isHorizontal = (pt0.y === pt1.y);
+
+            if (isVertical || isHorizontal) {
+                let nextVertical = (pt1.x === pt2.x);
+                let nextHorizontal = (pt1.y === pt2.y);
+
+                if (!(nextVertical && isVertical) && !(nextHorizontal && isHorizontal)) {
                     ptsSmp.push(pt1);
                 }
                 pt0 = pt1;
-                continue
+                continue;
             }
 
-            // not zero length or vertical or horizontal
-            if (!(pt0.x === pt1.x && pt0.y === pt1.y) &&
-                !(pt0.x === pt1.x && pt0.y !== pt1.y) &&
-                !(pt0.x !== pt1.x && pt0.y === pt1.y)) {
+            // Cross product check for colinearity
+            let dx0 = pt0.x - pt2.x;
+            let dy0 = pt0.y - pt2.y;
+            let dx1 = pt0.x - pt1.x;
+            let dy1 = pt0.y - pt1.y;
+            let cross = Math.abs(dx0 * dy1 - dy0 * dx1);
 
-                // get current square distance
-                squareDistance = getSquareDistance(pt1, pt2);
+            // Dynamic tolerance based on segment length
+            let squareDistance = getSquareDistance(pt1, pt2);
+            tolerance = squareDistance / 50;
 
-                // check area to detect flat segments
-                let area = getPolygonArea([pt0, pt1, pt2], true);
-                let areaThreshold = squareDistance * 0.01;
-                let isFlat = !area ? true : (squareDistance ? area < areaThreshold : true);
-
-                if (!isFlat) {
+            if (cross > tolerance) {
+                if (i === l - 1) {
+                    // last point
+                    ptsSmp.push(pt1, pt2);
+                } else {
                     ptsSmp.push(pt1);
                 }
             }
-
             pt0 = pt1;
+        }
 
-            // add last vertice
-            if (i === l - 1) {
-                ptsSmp.push(pts[pts.length - 1]);
-            }
+        // first and last points coincide
+        pt0 = ptsSmp[0];
+        if(pt0.x===ptL.x && pt0.y===ptL.y){
+            pts.pop();
         }
 
         return ptsSmp;
@@ -1266,32 +1253,55 @@
      * sloppy but fast
      */
 
-    function simplifyPolyRadialDistance(pts, quality = 0.9){
+    function simplifyRD(pts, quality = 0.9, width = 0, height = 0) {
+
+        /**
+         * switch between absolute or 
+         * quality based relative thresholds
+         */
+        let isAbsolute = false;
+
+        if (typeof quality === 'string') {
+            let value = parseFloat(quality);
+            isAbsolute = true;
+            quality = value;
+        }
+
+        // nothing to do - exit
+        if (pts.length < 4 || (!isAbsolute && quality) >= 1) return pts;
 
         let p0 = pts[0];
-        let ptLast = pts[pts.length-1];
         let pt;
         let ptsSmp = [p0];
 
-        /**
-         * approximate dimensions
-         * adjust tolerance for 
-         * very small polygons e.g geodata
-         */
-
-        let polyS = reducePoints(pts, 12);
-        let { width, height } = getPolyBBox(polyS);
-
-        // average side lengths
-        let dimAvg= (width+height)/2;
-        let scale = dimAvg/25;
-
         // convert quality to squaredistance tolerance
-        let tolerance = 1-quality;
-        let toleranceNew = tolerance * (scale);
-        tolerance = toleranceNew**2;
+        let tolerance = quality;
 
-        for (let i = 1, l = pts.length-1; i < l; i++) {
+        if (!isAbsolute) {
+
+            // quality to tolerance
+            tolerance = 1 - quality;
+
+            /**
+             * approximate dimensions
+             * adjust tolerance for 
+             * very small polygons e.g geodata
+             */
+
+            if (!width && !height) {
+                let polyS = reducePoints$1(pts, 12);
+                ({ width, height } = getPolyBBox$1(polyS));
+            }
+            // average side lengths
+            let dimAvg = (width + height) / 2;
+            let scale = dimAvg / 25;
+            tolerance = (tolerance * (scale)) ** 2;
+
+            if (quality > 0.5) tolerance /= 10;
+
+        }
+
+        for (let i = 1, l = pts.length; i < l; i++) {
             pt = pts[i];
             let dist = getSquareDistance(p0, pt);
 
@@ -1302,8 +1312,7 @@
         }
 
         // add last point - if not coinciding with first point
-        if (p0.x !== ptLast.x && p0.y !== ptLast.y ) {
-
+        if (p0.x !== pt.x && p0.y !== pt.y) {
             ptsSmp.push(pt);
         }
 
@@ -1319,28 +1328,46 @@
      * and https://karthaus.nl/rdp/
      */
 
-    function simplifyPolyRDP(pts, quality = 0.9) {
-
-        if (pts.length <= 2 || quality>=1) return pts;
-
-        // convert quality to squaredistance tolerance
-        let tolerance = 1-quality;
+    function simplifyRDP(pts, quality = 0.9, width = 0, height = 0) {
 
         /**
-         * approximate dimensions
-         * adjust tolerance for 
-         * very small polygons e.g geodata
+         * switch between absolute or 
+         * quality based relative thresholds
          */
+        let isAbsolute = false;
 
-        let polyS = reducePoints(pts, 32);
-        let { width, height } = getPolyBBox(polyS);
+        if (typeof quality === 'string') {
+            isAbsolute = true;
+            quality = parseFloat(quality);
+        }
 
-        // average side lengths
-        let dimAvg= (width+height)/2;
-        let scale = dimAvg/100;
+        if (pts.length < 4 || (!isAbsolute && quality) >= 1) return pts;
 
-        let toleranceNew = tolerance * (scale);
-        tolerance = toleranceNew**2;
+        // convert quality to squaredistance tolerance
+        let tolerance = quality;
+
+        if (!isAbsolute) {
+            
+            tolerance = 1 - quality;
+
+            // adjust for higher qualities
+            if (quality > 0.5) tolerance /= 2;
+
+            /**
+             * approximate dimensions
+             * adjust tolerance for 
+             * very small polygons e.g geodata
+             */
+            if (!width && !height) {
+                let polyS = reducePoints$1(pts, 12);
+                ({ width, height } = getPolyBBox$1(polyS));
+            }
+
+            // average side lengths
+            let dimAvg = (width + height) / 2;
+            let scale = dimAvg / 100;
+            tolerance = (tolerance * (scale)) ** 2;
+        }
 
         // Square distance from point to segment
         const segmentSquareDistance = (p, p1, p2) => {
@@ -1389,17 +1416,662 @@
             } else {
                 ptsSmp.push(pts[last]);
             }
+
         }
 
         return ptsSmp;
     }
 
-    exports.minifyPathData = minifyPathData;
+    /**
+     * Visvalingam-Whyatt 
+     * simplification
+     */
+    function simplifyVW(pts, quality = 1, width = 0, height = 0) {
+
+        /**
+         * switch between absolute or 
+         * quality based relative thresholds
+         */
+        let isAbsolute = false;
+
+        if (typeof quality === 'string') {
+            isAbsolute = true;
+            quality = parseFloat(quality);
+        }
+
+        if (pts.length < 4 || (!isAbsolute && quality) >= 1) return pts;
+
+        // no heap data - calculate
+        let heap = initHeap(pts);
+
+        if (!width && !height) {
+            let polyS = reducePoints(pts, 12);
+            ({ width, height } = getPolyBBox(polyS));
+        }
+
+        let tolerance = quality;
+
+        if (!isAbsolute) {
+            // average side lengths
+            let dimAvg = (width + height) / 2;
+            let scale = dimAvg / 100;
+            tolerance = ((1 - quality) * (scale)) ** 2;
+        }
+
+        const updateArea = (pts, index, heap) => {
+            let pt = pts[index];
+            if (pt.prev === null || pt.next === null) return;
+
+            let tri = [pts[pt.prev], pt, pts[pt.next]];
+            let area = getPolygonArea(tri);
+            pt.area = area;
+
+            if (pt.heapIndex !== undefined) {
+                heap.update(pt.heapIndex, area);
+            } else {
+                pt.heapIndex = heap.push(area, index);
+            }
+        };
+
+        let maxArea = 0;
+        let len = pts.length;
+
+        while (heap.size() > 0) {
+            const { area, index } = heap.pop();
+            const pt = pts[index];
+
+            if (area && area < maxArea) {
+                pt.area = maxArea;
+
+            } else {
+                maxArea = area;
+            }
+
+            if (index !== 0) {
+                pts[pt.prev].next = pt.next;
+                updateArea(pts, pt.prev, heap);
+            }
+
+            if (index !== len - 1) {
+                pts[pt.next].prev = pt.prev;
+                updateArea(pts, pt.next, heap);
+            }
+
+        }
+
+        let ptsS = [];
+        for (let i = 0, l = pts.length; i < l; i++) {
+            let pt = pts[i];
+            if (!pt.area || i === 0 || i === l - 1 || pt.area >= tolerance) {
+                ptsS.push(pt);
+            }
+        }
+
+        return ptsS
+
+    }
+
+    /**
+     * get area data
+     * for heap
+     */
+
+    function initHeap(pts) {
+
+        const heap = new MinHeap();
+
+        for (let i = 0, len = pts.length; i < len; i++) {
+            // prev, current, next
+            let i0 = i === 0 ? len - 1 : i - 1;
+            let i1 = i;
+            let i2 = i === len - 1 ? 0 : i + 1;
+
+            let pt0 = pts[i0];
+            let pt1 = pts[i1];
+            let pt2 = pts[i2];
+
+            let area = i > 0 || i === len - 1 ?
+                (pt1.area ? pt1.area : getPolygonArea([pt0, pt1, pt2])) :
+                Infinity;
+
+            pt1.prev = i0;
+            pt1.index = i1;
+            pt1.next = i2;
+            pt1.area = area;
+            pt1.heapIndex = i > 0 ? heap.push(area, i1) : 0;
+        }
+
+        return heap;
+    }
+
+    /**
+     * minheap
+     */
+
+    class MinHeap {
+        constructor() {
+            this.heap = [];
+            this.indexMap = new Map();
+        }
+
+        push(area, index) {
+            const node = { area, index };
+            this.heap.push(node);
+            const heapIndex = this.heap.length - 1;
+            this.indexMap.set(index, heapIndex);
+            this.bubbleUp(heapIndex);
+            return heapIndex;
+        }
+
+        pop() {
+            if (this.heap.length === 0) return null;
+            const min = this.heap[0];
+            const last = this.heap.pop();
+
+            if (this.heap.length > 0) {
+                this.heap[0] = last;
+                this.indexMap.set(last.index, 0);
+                this.bubbleDown(0);
+            }
+
+            this.indexMap.delete(min.index);
+            return min;
+        }
+
+        update(heapIndex, newArea) {
+            if (
+                typeof heapIndex !== 'number' ||
+                heapIndex < 0 ||
+                heapIndex >= this.heap.length
+            ) return;
+
+            const oldArea = this.heap[heapIndex].area;
+            this.heap[heapIndex].area = newArea;
+
+            if (newArea < oldArea) {
+                this.bubbleUp(heapIndex);
+            } else {
+                this.bubbleDown(heapIndex);
+            }
+        }
+
+        size() {
+            return this.heap.length;
+        }
+
+        bubbleUp(index) {
+            while (index > 0) {
+                const parent = Math.floor((index - 1) / 2);
+                if (this.heap[parent].area <= this.heap[index].area) break;
+
+                this.swap(index, parent);
+                index = parent;
+            }
+        }
+
+        bubbleDown(index) {
+            while (true) {
+                const left = 2 * index + 1;
+                const right = 2 * index + 2;
+                let smallest = index;
+
+                if (
+                    left < this.heap.length &&
+                    this.heap[left].area < this.heap[smallest].area
+                ) {
+                    smallest = left;
+                }
+
+                if (
+                    right < this.heap.length &&
+                    this.heap[right].area < this.heap[smallest].area
+                ) {
+                    smallest = right;
+                }
+
+                if (smallest === index) break;
+
+                this.swap(index, smallest);
+                index = smallest;
+            }
+        }
+
+        swap(i, j) {
+            [this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]];
+            this.indexMap.set(this.heap[i].index, i);
+            this.indexMap.set(this.heap[j].index, j);
+        }
+    }
+
+    /*
+    export function renderPoint(
+        svg,
+        coords,
+        fill = "red",
+        r = "1%",
+        opacity = "1",
+        title = '',
+        render = true,
+        id = "",
+        className = ""
+    ) {
+        if (Array.isArray(coords)) {
+            coords = {
+                x: coords[0],
+                y: coords[1]
+            };
+        }
+        let marker = `<circle class="${className}" opacity="${opacity}" id="${id}" cx="${coords.x}" cy="${coords.y}" r="${r}" fill="${fill}">
+      <title>${title}</title></circle>`;
+
+        if (render) {
+            svg.insertAdjacentHTML("beforeend", marker);
+        } else {
+            return marker;
+        }
+    }
+    */
+
+    function simplifyToMax(pts, maxVertices = 0) {
+        if (pts.length <= 3 || !maxVertices || pts.length<=maxVertices) return pts;
+
+        function getTriangles(pts) {
+            let triangles = [];
+            // Build triangle areas, skipping first and last
+            for (let i = 0; i < pts.length; i++) {
+
+                let i0 = i === 0 ? pts.length - 1 : i - 1;
+                let i1 = i;
+                let i2 = i === pts.length - 1 ? 0 : i + 1;
+
+                let pt0 = pts[i0];
+                let pt1 = pts[i1];
+                let pt2 = pts[i2];
+
+                let area = getPolygonArea([pt0, pt1, pt2]);
+                let prev = i0;
+                let next = i2;
+
+                triangles.push({ index: i, area, prev, next });
+            }
+            return triangles;
+        }
+
+        let ptsSmpl = pts;
+        let passes = Math.ceil(pts.length / maxVertices);
+
+        // 1. remove only segments with very small mid areas
+
+        let lastLen = ptsSmpl.length;
+
+        for (let i = 0; ptsSmpl.length > maxVertices && i < passes; i++) {
+            let limit = 0.5;
+
+            let removeSmallArea = false;
+
+            ptsSmpl = simplyfyByArea(ptsSmpl, maxVertices, limit, true, removeSmallArea);
+
+            // no optimization possible - exit
+            if (lastLen === ptsSmpl.length) {
+                break;
+            }
+            lastLen = ptsSmpl.length;
+        }
+
+        // final removal
+        if (ptsSmpl.length > maxVertices) {
+            ptsSmpl = simplyfyByArea(ptsSmpl, maxVertices, 1);
+        }
+
+        function simplyfyByArea(ptsSmpl, maxVertices = 0, limit = 0.5, sort = true, removeSmallArea=false) {
+
+            let triangles = getTriangles(ptsSmpl);
+            let len = triangles.length;
+            let simplified = [];
+            let areaAvg;
+
+            if(removeSmallArea){
+                let trianglesSmall = triangles;
+                areaAvg = trianglesSmall.map(val => val.area).reduce((partialSum, a) => partialSum + a, 0)/len * 0.25;
+                sort = false;
+            }
+
+            // Sort by area ascending
+            if (sort) triangles.sort((a, b) => a.area - b.area);
+
+            // Determine number of points to keep
+            let toRemoveCount = ptsSmpl.length - maxVertices;
+
+            let toRemove = new Set();
+            toRemoveCount = Math.floor(toRemoveCount * limit) + 1;
+
+            let lastIndex = 0;
+            for (let i = 0; i < toRemoveCount; i++) {
+                let triangle = triangles[i];
+                let { index, area, prev, next } = triangle;
+
+                let trianglePrev = triangles[prev];
+                let triangleNext = triangles[next];
+                let [areaPrev, areaNext] = [trianglePrev.area, triangleNext.area];
+
+                if(removeSmallArea){
+
+                    if (index > 0 && area < areaAvg && lastIndex < index  ) {
+
+                        toRemove.add(index);
+                        lastIndex = next;
+                    }
+
+                }
+
+                else if ((limit === 1 || (area < areaPrev && area < areaNext))) {
+                    lastIndex = index;
+
+                    if (index > 0) {
+                        toRemove.add(index);
+                        lastIndex = index;
+                    }
+                }
+            }
+
+            for (let i = 0; i < ptsSmpl.length; i++) {
+                if (!toRemove.has(i)) simplified.push(ptsSmpl[i]);
+            }
+
+            return simplified;
+        }
+
+        return ptsSmpl;
+
+    }
+
+    function polySimplify_core(pts, {
+        quality = 1,
+
+        // simplifification algorithms
+        RC = true,
+        RDP = true,
+        VW = false,
+        RD = true,
+
+        // allow custom combinations
+        overrideQuality = false,
+
+        // handy for mid segment starting point
+        optimizeStartingPoint = true,
+
+        maxPoints = 0,
+
+        // brute force simplification
+        skipPoints = false,
+        outputFormat = 'points',
+        scale = 1,
+        alignToZero = false,
+        translateX = 0,
+        translateY = 0,
+        scaleToWidth = 0,
+        scaleToHeight = 0,
+        meta = false,
+
+        // rounding
+        decimals = -1,
+
+        // options for pathData output
+        toRelative = false,
+        toShorthands = false,
+        minifyString = false
+    } = {}) {
+
+        // normalize
+        try {
+            pts = normalizePointInput(pts);
+        } catch {
+            console.warn('invalid input');
+            pts = [{ x: 0, y: 0 }];
+            return pts;
+        }
+
+        /**
+         * switch between absolute or 
+         * quality based relative thresholds
+         */
+        let unit;
+        let qualityNum = quality;
+        let isAbsolute = false;
+        let toMaxPoints = false;
+
+        if (typeof quality === 'string') {
+            qualityNum = parseFloat(quality);
+            unit = quality.replace(qualityNum.toString(), '').trim();
+
+            if (unit) {
+                if (unit === 'v') {
+                    maxPoints = qualityNum;
+                    toMaxPoints = true;
+                    quality = 0.8;
+                } else {
+                    isAbsolute = true;
+                }
+
+            } else {
+                quality = qualityNum <= 1 ? qualityNum : 0.8;
+
+            }
+
+        }
+
+        // adjust quality to match vertices difference
+        if (maxPoints) {
+
+            const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+            let rat = +(pts.length / maxPoints / 100).toFixed(1);
+            quality = Math.abs(1 - rat);
+            quality = clamp(quality, 0.4, 0.8);
+
+            quality = quality > 0 && quality < 1 ? quality : 0.8;
+        }
+
+        // if is compound
+        let isCompound = pts[0].length > 1;
+
+        /**
+         * normalize to array for 
+         * compound polygons or paths
+         */
+        let polyArr = isCompound ? pts : [pts];
+        let polyArrSimpl = [];
+
+        /**
+         * get area and bboxes
+         * for subpath max limits
+         */
+        let areaArr = [];
+        let areaTotal = 0;
+        let bboxArr = [];
+
+        for (let i = 0, l = polyArr.length; i < l; i++) {
+            let pts = polyArr[i];
+
+            let polyApprox = reducePoints$1(pts, 64);
+            bboxArr.push(getPolyBBox$1(polyApprox));
+            let area = getPolygonArea(polyApprox);
+            areaTotal += area;
+            areaArr.push(area);
+        }
+
+        for (let i = 0, l = polyArr.length; i < l; i++) {
+
+            let pts = polyArr[i];
+
+            // split/adjust max point according to subpath area
+            let rat = areaArr[i]/areaTotal;
+            let maxPointsSub = toMaxPoints ? Math.ceil(maxPoints * rat) : 0;
+
+            // no points - exit
+            if (!pts.length) return [];
+
+            // collect simplified point array
+            let ptsSmp = pts;
+
+            // line segments 
+
+            if (pts.length < 3) {
+                polyArrSimpl.push(ptsSmp);
+                continue;
+            }
+
+            /**
+             * 0. reduce vertices to 
+             * maximum limit
+             * brute force but very fast for huge 
+             * point arrays
+             */
+
+            
+            if (skipPoints && !RDP && !VW && !RD && toMaxPoints) {
+
+                ptsSmp = reducePoints$1(pts, maxPointsSub);
+                polyArrSimpl.push(ptsSmp);
+                continue
+            }
+
+            /**
+             * override settings due to 
+             * quality
+             */
+
+            if (!overrideQuality) {
+                if (quality >= 1) RDP = false;
+                if (quality >= 0.75) RD = false;
+                if (quality < 0.5) {
+                    RD = true;
+
+                }
+            }
+
+            /**
+             * 0. sort to left most
+             * can reduce point count if starting point is 
+             * in the middle 
+             * of a colinear segment
+             */
+            ptsSmp = optimizeStartingPoint ? sortPolygonLeftTopFirst(ptsSmp) : ptsSmp;
+
+            /**
+             * RC= remove colinear
+             * 1. lossless simplification
+             * only remove zero-length segments/coinciding points
+             * or colinear segments
+             */
+
+            if(RC){
+                if(!isAbsolute && quality>1) {
+                    polyArrSimpl.push(ptsSmp);
+                    continue
+                }
+                ptsSmp = simplifyRC(ptsSmp);
+            }
+
+            /**
+             * check regular polygons
+             * for simple regular polys
+             * if it's regular:
+             * we skip RDP simplification
+             */
+
+            if (RC) {
+                let isRegular = detectRegularPolygon(ptsSmp);
+
+                if (isRegular) {
+                    VW = false;
+                    RDP = false;
+                }
+            }
+
+            /**
+             * approximate dimensions 
+             * for relative threshold calculations
+             */
+
+            let { width, height } = bboxArr[i];
+
+            // average side lengths
+
+            /** 
+             * 1. radial distance
+             * sloppy but fast
+             */
+
+            if (RD && ptsSmp.length > maxPointsSub) {
+
+                ptsSmp = simplifyRD(ptsSmp, quality, width, height);
+            }
+
+            /**
+             * 2. Ramer-Douglas-Peucker simplification
+             */
+            //
+            if (RDP && ptsSmp.length > maxPointsSub) {
+
+                ptsSmp = simplifyRDP(ptsSmp, quality, width, height);
+            }
+
+            /**
+             * 3. Apply VW-Whyatt 
+             * simplification for huge geodata polygons
+             */
+
+            if (VW && ptsSmp.length > maxPointsSub  ) {
+
+                ptsSmp = simplifyVW(ptsSmp, quality, width, height);
+            }
+
+            /**
+             * 4. reduce to target 
+             * vertices limit
+             */
+
+            if (toMaxPoints && ptsSmp.length > maxPointsSub) {
+
+                /**
+                 * add radial simplification for better performance
+                 * if difference is > 20%
+                 */
+
+                let diff = (ptsSmp.length - maxPointsSub)/ptsSmp.length;
+
+                
+                if (diff > 0.25) {
+                    ptsSmp = simplifyRD(ptsSmp, quality, width, height);
+
+                }
+
+                // final reduction
+                ptsSmp = simplifyToMax(ptsSmp, maxPointsSub);
+            }
+
+            // add to final pts array
+            polyArrSimpl.push(ptsSmp);
+
+        }
+
+        let out = getOutputData(polyArr, polyArrSimpl, outputFormat, meta, decimals, toRelative, toShorthands, minifyString, scale, translateX, translateY, alignToZero, scaleToWidth, scaleToHeight, isCompound);
+
+        return meta ? out : out.data;
+    }
+
+    // Browser global
+    if (typeof window !== 'undefined') {
+        window.polySimplify = polySimplify_core;
+        window.normalizePointInput = normalizePointInput;
+    }
+
     exports.normalizePointInput = normalizePointInput;
     exports.pathDataToD = pathDataToD;
     exports.polySimplify = polySimplify_core;
-    exports.simplifyPolyRDP = simplifyPolyRDP;
-    exports.simplifyPolyRadialDistance = simplifyPolyRadialDistance;
-    exports.simplifyRemoveColinear = simplifyRemoveColinear;
+    exports.simplifyRC = simplifyRC;
+    exports.simplifyRD = simplifyRD;
+    exports.simplifyRDP = simplifyRDP;
 
 })(this["poly-simplify"] = this["poly-simplify"] || {});

@@ -65,19 +65,17 @@ export function normalizePointInput(pts) {
         // check compoundPath
         let pathData = parsePathNorm(pts);
         let suPaths = splitSubpaths(pathData);
-        isCompound = suPaths.length>1;
+        isCompound = suPaths.length > 1;
 
         let ptArr = [];
-        if(isCompound){
-            suPaths.forEach(pathData=>{
-
+        if (isCompound) {
+            suPaths.forEach(pathData => {
                 let ptsSub = pathDataToPoly(pathData);
-                //console.log(ptsSub);
                 ptArr.push(ptsSub);
 
             });
 
-        }else{
+        } else {
             ptArr = pathDataToPoly(pathData);
         }
 
@@ -87,11 +85,20 @@ export function normalizePointInput(pts) {
 
     // 2.1 check if it's JSON
     let isJSON = isString ? pts.startsWith('{') || pts.startsWith('[') : false;
-    //console.log('isJSON', isJSON);
+
+    function fixJsObjectString(str) {
+        return str.replace(/([{,])\s*(\w+)\s*:/g, '$1"$2":');
+    }
 
     // 2.1.1: if JSON – parse data
     if (isJSON) {
-        pts = JSON.parse(pts);
+        try {
+            pts = JSON.parse(pts);
+
+        } catch {
+            // convert to point array
+            pts = JSON.parse(fixJsObjectString(pts));
+        }
         isString = false;
         //return pts;
     }
@@ -116,12 +123,37 @@ export function normalizePointInput(pts) {
     let isArray = Array.isArray(pts);
 
 
-
     // 3.1: is nested array – x/y grouped in sub arrays
     let isNested = isArray && pts[0].length === 2;
 
+    // has su polys
+    let isCompoundPoly = !isNested && isArray && Array.isArray(pts[0]);
+
+    // grouped in x/y pairs
+    let isCompoundPolyNested = isCompoundPoly && pts[0][0].length === 2;
+
+    // flat point value array
+    let isCompoundPolyFlat = isCompoundPoly && !isCompoundPolyNested && pts[0].length > 2 && !pts[0][0].hasOwnProperty('x');
+
+    /*
+    let isCompoundPolyObj = isCompoundPoly && !isCompoundPolyNested && pts[0].length>2 && pts[0][0].hasOwnProperty('x');
+
+    console.log('isCompoundPolyObj', isCompoundPolyObj, 'isCompoundPolyFlat', isCompoundPolyFlat, 'isCompoundPolyNested', isCompoundPolyNested, isCompoundPoly, isNested);
+    */
+
+
+    if (isCompoundPolyFlat || isCompoundPolyNested) {
+        let ptsN = []
+        pts.forEach(sub => {
+            let pts = isCompoundPolyFlat ? toPointArray(sub) : sub.map((pt) => { return { x: pt[0], y: pt[1] }; });
+            ptsN.push(pts)
+        });
+
+        pts = ptsN;
+    }
+
     // convert to point array
-    if (isNested) {
+    else if (isNested) {
         pts = pts.map((pt) => {
             return { x: pt[0], y: pt[1] };
         });
@@ -132,6 +164,7 @@ export function normalizePointInput(pts) {
     let isFlat = !Array.isArray(pts[0]) && !pts[0].hasOwnProperty('x');
     if (isFlat) pts = toPointArray(pts);
     //console.log(isArray, pts);
+    //console.log(pts);
 
     return pts;
 }

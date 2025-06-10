@@ -1,5 +1,7 @@
 // init poly simplify
-import { polySimplify, normalizePointInput, simplifyRemoveColinear, simplifyPolyRDP, minifyPathData, pathDataToD } from '../dist/poly-simplify.esm.js';
+import { polySimplify, normalizePointInput, simplifyRC, simplifyRDP, pathDataToD } from '../dist/poly-simplify.esm.js';
+
+//import{ simplifyRC} from '..dist/'
 
 
 let localStorageName = 'settings_polysimplify';
@@ -34,8 +36,6 @@ let settings
 
     // init settings cache
     cacheSettings(settings, settingsChangeEventName, localStorageName)
-
-
     //console.log('getSettingsFromInputs', hasSettings, settings);
 
     // add EventListeners
@@ -45,16 +45,29 @@ let settings
     // init
     update(settings)
 
+    /**
+     * override relative quality with 
+     * absolute tolerance
+     */
+    let inpQ= document.querySelector('.input-quality');
+    let inpT= document.querySelector('.input-tolerance');
+    inpQ.addEventListener('input', (e)=>{
+        inpT.value='';
+        settings.tolerance = '';
+        //update(settings)
+    })
 
     document.addEventListener(settingsChangeEventName, () => {
-        //console.log('Data changed:', settings);
-
-        //let settingsCached = getSettingsCache(localStorageName);
-        //console.log('Data cached:', settingsCached);
         update(settings)
     });
 
+
+
+
+
+
 })();
+
 
 
 
@@ -64,22 +77,27 @@ function update(settings) {
 
     //console.log(settings);
 
-    let { removeColinear, useRDP, radialDistance, toMaxVertices, maxVertices, decimals, inputPoly, tolerance, outputFormat, toRelative,
-        toShorthands, minifyString, scale, alignToZero, translateX, translateY, scaleToWidth, scaleToHeight, showFill, showMarkers } = settings;
-
-    //console.log('settings', settings );
-    //console.log('inputPoly', inputPoly);
+    let { RC, RDP, VW, RD, skipPoints, maxPoints, decimals, inputPoly, quality, tolerance, outputFormat, toRelative,
+        toShorthands, minifyString, scale, alignToZero, translateX, translateY, scaleToWidth, scaleToHeight, showFill, showMarkers, optimizeStartingPoint, overrideQuality } = settings;
 
     let options = {
-        tolerance,
-        removeColinear,
-        useRDP,
-        radialDistance,
+        quality,
+
+        //simplifications
+        RC,
+        RDP,
+        RD,
+        VW,
+        skipPoints,
+        maxPoints,
+
+        // rounding
         decimals,
+
+        optimizeStartingPoint,
+        overrideQuality,
+
         outputFormat,
-        maxVertices,
-        toMaxVertices,
-        maxVertices,
         scale,
         alignToZero,
         translateX,
@@ -93,6 +111,12 @@ function update(settings) {
         minifyString
     }
 
+    if(tolerance){
+        options.quality = tolerance
+    }
+    //options.quality = tolerance+'px';
+    //console.log(options);
+
     // simplify
     let simplified = polySimplify(inputPoly, options);
     //if(!simplified.length) return false;
@@ -102,7 +126,7 @@ function update(settings) {
     let { data, ptsArr, isPolygon, count, countOriginal } = simplified;
 
 
-    if(!ptsArr) {
+    if (!ptsArr) {
         console.warn('No points to simplify - please check your input data');
         return false;
     }
@@ -134,21 +158,31 @@ function update(settings) {
      */
 
 
+
     if (outputFormat === 'points' || outputFormat === 'pointstring' || outputFormat === 'pointsnested') {
+
+
+        // not compound wrap
+        if (data[0].length === 2 || !Array.isArray(data[0])) {
+            data = [data]
+            //console.log('not compound', data);
+        }
 
         if (outputFormat === 'pointsnested') {
             //console.log('pointsnested', simplified.data);
-            pointsAtt = simplified.data[0].join(' ');
+            pointsAtt = simplified.data.flat().join(' ');
             //data = JSON.stringify(data);
+            //console.log(pointsAtt);
         } else {
             //data = outputFormat === 'points' ? JSON.stringify(data).replaceAll('"', '') : data;
-            pointsAtt = outputFormat === 'points' ? data[0].map(pt => `${pt.x} ${pt.y}`).join(' ') : data;
+            pointsAtt = outputFormat === 'points' ? data.flat().map(pt => `${pt.x} ${pt.y}`).join(' ') : data;
         }
 
         el = isPolygon ? 'polygon' : 'polyline';
 
 
         if (data.length > 1) {
+
             data.forEach(pts => {
                 dAtt += outputFormat === 'points' ? `M ${pts.map(pt => { return `${pt.x} ${pt.y}` }).join(' ')}` :
                     (outputFormat === 'pointstring' ? `M ${pts}` : `M ${pts.map(pt => { return `${pt[0]} ${pt[1]}` }).join(' ')}`)
@@ -167,6 +201,9 @@ function update(settings) {
     // is JSON
     else {
         dAtt = '';
+        if(!Array.isArray(ptsArr[0])) {
+            ptsArr = [ptsArr];
+        }
         ptsArr.forEach(pts => {
             let closePath = '';
             if (isPolygon) closePath = 'Z';
@@ -228,6 +265,8 @@ function update(settings) {
         svgPreview.classList.remove('showFill');
     }
 
+
+    //console.log('showMarkers', showMarkers);
     if (showMarkers) {
         svgPreview.classList.add('showMarkers');
     } else {
@@ -243,23 +282,29 @@ function update(settings) {
     /**
      * show sample config
      */
+    if(settings.tolerance) {
+        settings.quality = settings.tolerance;
+    }
+
     let keys = Object.keys(settings);
     let values = Object.values(settings);
-    let exclude = ['selectSamples', 'showFill', 'showMarkers', 'inputPoly'];
 
-    let sampleConfig= `import {polySimplify} from 'https://cdn.jsdelivr.net/npm/poly-simplify@latest/dist/poly-simplify.esm.js';\n\nlet options={\n`
+    let exclude = ['selectSamples', 'showFill', 'showMarkers', 'inputPoly', 'tolerance'];
+
+
+    let sampleConfig = `import {polySimplify} from 'https://cdn.jsdelivr.net/npm/poly-simplify@latest/dist/poly-simplify.esm.js';\n\nlet options={\n`
 
     let lines = [];
-    for(let i=0,l=values.length; i<l; i++){
+    for (let i = 0, l = values.length; i < l; i++) {
         let prop = keys[i];
 
-        if(exclude.includes(prop)) continue;
+        if (exclude.includes(prop)) continue;
         let val = isNaN(values[i]) ? `\`${values[i]}\`` : values[i];
         lines.push(`\t${prop}: ${val}`);
 
     }
 
-    sampleConfig +=`${lines.join(',\n')}\n}\n\nlet inputPoly = \`${settings.inputPoly}\`;\nlet ptsSimplified = polySimplify(inputPoly, options);\n\nconsole.log(ptsSimplified);`;
+    sampleConfig += `${lines.join(',\n')}\n}\n\nlet inputPoly = \`${settings.inputPoly}\`;\nlet ptsSimplified = polySimplify(inputPoly, options);\n\nconsole.log(ptsSimplified);`;
 
     configOut.value = sampleConfig;
 
