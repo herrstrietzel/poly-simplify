@@ -1854,7 +1854,6 @@ function polySimplify_core(pts, {
             quality = qualityNum <= 1 ? qualityNum : 0.8;
 
         }
-
     }
 
     // adjust quality to match vertices difference
