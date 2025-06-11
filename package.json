@@ -1,11 +1,17 @@
 {
   "name": "poly-simplify",
-  "version": "0.1.5",
-  "main": "./dist/poly-simplify.node.js",   
-  "module": "./dist/poly-simplify.esm.js", 
+  "version": "0.1.6",
+  "main": "./dist/poly-simplify.node.js",
+  "module": "./dist/poly-simplify.esm.js",
+  "browser": "./dist/poly-simplify.js",
   "exports": {
-    "import": "./dist/poly-simplify.esm.js",
-    "require": "./dist/poly-simplify.node.js"
+    ".": {
+      "import": "./dist/poly-simplify.esm.js",
+      "require": "./dist/poly-simplify.node.js"
+    },
+    "./dist/poly-simplify.esm.js": "./dist/poly-simplify.esm.js",
+    "./dist/poly-simplify.js": "./dist/poly-simplify.js",
+    "./dist/poly-simplify.min.js": "./dist/poly-simplify.min.js"
   },
   "type": "module",
   "repository": {
