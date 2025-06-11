@@ -147,7 +147,9 @@ You can test all settings and generate sample SVG files for demo purposes:
 ## Changelog, Updates and rollback
 ### Rollback
 If you encounter any issues with the recent versions you can rollback to a previous version.  
-See all versions on [npm](https://www.npmjs.com/package/poly-simplify)  
+See all versions on 
+* [npm](https://www.npmjs.com/package/poly-simplify)  
+* [jsdelivr](https://www.jsdelivr.com/package/npm/poly-simplify)
 
 ### Changelog
 * 0.1.4 fixed problems with linear polylines
