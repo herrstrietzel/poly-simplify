@@ -1213,7 +1213,7 @@ function simplifyRC(pts) {
                 ptsSmp.push(pt1);
             }
             // add last point
-            if(i === l - 1){
+            else if(i === l - 1){
                 ptsSmp.push(pt2);
             }
             pt0 = pt1;
