@@ -1213,6 +1213,10 @@
                 if (!(nextVertical && isVertical) && !(nextHorizontal && isHorizontal)) {
                     ptsSmp.push(pt1);
                 }
+                // add last point
+                if(i === l - 1){
+                    ptsSmp.push(pt2);
+                }
                 pt0 = pt1;
                 continue;
             }
@@ -1970,6 +1974,7 @@
                     continue
                 }
                 ptsSmp = simplifyRC(ptsSmp);
+
             }
 
             /**

@@ -1,15 +1,21 @@
 {
   "name": "poly-simplify",
-  "version": "0.1.4",
+  "version": "0.1.4.1",
+  "main": "./dist/poly-simplify.node.js",   
+  "module": "./dist/poly-simplify.esm.js", 
+  "exports": {
+    "import": "./dist/poly-simplify.esm.js",
+    "require": "./dist/poly-simplify.node.js"
+  },
   "type": "module",
-  "main": "dist/poly-simplify.esm.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/herrstrietzel/poly-simplify.git"
   },
   "scripts": {
     "build": "rollup -c",
-    "watch": "rollup -c --watch"
+    "watch": "rollup -c --watch",
+    "test": "node test.js"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
@@ -24,7 +30,7 @@
   ],
   "author": "herrstrietzel",
   "license": "MIT",
-  "description": "Simplify/reduce polylines/polygon vertices in JS",
+  "description": "Simplify polyline or polygon vertices in JS",
   "dependencies": {
     "heap": "^0.2.7",
     "terser": "^5.39.0"

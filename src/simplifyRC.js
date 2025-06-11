@@ -38,6 +38,10 @@ export function simplifyRC(pts) {
             if (!(nextVertical && isVertical) && !(nextHorizontal && isHorizontal)) {
                 ptsSmp.push(pt1);
             }
+            // add last point
+            if(i === l - 1){
+                ptsSmp.push(pt2);
+            }
             pt0 = pt1;
             continue;
         }
@@ -64,12 +68,13 @@ export function simplifyRC(pts) {
         pt0 = pt1;
     }
 
+
     // first and last points coincide
     pt0 = ptsSmp[0];
     if(pt0.x===ptL.x && pt0.y===ptL.y){
         pts.pop();
     }
-
+    //console.log('pts RC:', ptsSmp);
     return ptsSmp;
 }
 

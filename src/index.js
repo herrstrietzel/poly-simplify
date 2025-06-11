@@ -90,7 +90,6 @@ function polySimplify_core(pts, {
         }
     }
 
-    //console.log('quality', quality, qualityNum, 'maxPoints:', maxPoints, 'isAbsolute:', isAbsolute);
 
     // adjust quality to match vertices difference
     if (maxPoints) {
@@ -215,9 +214,9 @@ function polySimplify_core(pts, {
                 polyArrSimpl.push(ptsSmp);
                 continue
             }
-            ptsSmp = simplifyRC(ptsSmp)
+            ptsSmp = simplifyRC(ptsSmp);
+            //console.log('pts:', ptsSmp);
         }
-
 
 
         /**

@@ -49,10 +49,10 @@ let settings
      * override relative quality with 
      * absolute tolerance
      */
-    let inpQ= document.querySelector('.input-quality');
-    let inpT= document.querySelector('.input-tolerance');
-    inpQ.addEventListener('input', (e)=>{
-        inpT.value='';
+    let inpQ = document.querySelector('.input-quality');
+    let inpT = document.querySelector('.input-tolerance');
+    inpQ.addEventListener('input', (e) => {
+        inpT.value = '';
         settings.tolerance = '';
         //update(settings)
     })
@@ -111,7 +111,7 @@ function update(settings) {
         minifyString
     }
 
-    if(tolerance){
+    if (tolerance) {
         options.quality = tolerance
     }
     //options.quality = tolerance+'px';
@@ -201,7 +201,7 @@ function update(settings) {
     // is JSON
     else {
         dAtt = '';
-        if(!Array.isArray(ptsArr[0])) {
+        if (!Array.isArray(ptsArr[0])) {
             ptsArr = [ptsArr];
         }
         ptsArr.forEach(pts => {
@@ -282,7 +282,7 @@ function update(settings) {
     /**
      * show sample config
      */
-    if(settings.tolerance) {
+    if (settings.tolerance) {
         settings.quality = settings.tolerance;
     }
 
@@ -315,6 +315,11 @@ function update(settings) {
 function adjustViewBox(svg, padding = 0, decimals = 3) {
     let bb = svg.getBBox();
     let [x, y, width, height] = [bb.x, bb.y, bb.width, bb.height];
+    let dimAV = (width + height) / 2;
+
+    // avoid zero height or width
+    width = width ? width : dimAV;
+    height = height ? height : dimAV;
 
     if (padding) {
         let dimMax = Math.max(width + padding, height + padding)

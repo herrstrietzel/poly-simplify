@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * split compound paths into 
  * sub path data array
@@ -2068,4 +2070,9 @@ if (typeof window !== 'undefined') {
     window.normalizePointInput = normalizePointInput;
 }
 
-export { normalizePointInput, pathDataToD, polySimplify_core as polySimplify, simplifyRC, simplifyRD, simplifyRDP };
+exports.normalizePointInput = normalizePointInput;
+exports.pathDataToD = pathDataToD;
+exports.polySimplify = polySimplify_core;
+exports.simplifyRC = simplifyRC;
+exports.simplifyRD = simplifyRD;
+exports.simplifyRDP = simplifyRDP;

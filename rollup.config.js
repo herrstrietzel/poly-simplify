@@ -6,19 +6,19 @@ const libName = 'poly-simplify';
 const stripDevComments = () => ({
     name: 'strip-dev-comments',
     renderChunk(code) {
-      return code
-        /* SAFER LINE-BY-LINE PROCESSING */
-        // Remove single-line /* comments */ (but keep /** docs */)
-        .replace(/^[ \t]*\/\*(?!\*).*?\*\/[ \t]*$/gm, '')
-        
-        // Remove //comments without space (but keep // comments)
-        .replace(/^[ \t]*\/\/[^\s].*$/gm, '')
-        
-        /* FORMATTING */
-        .replace(/\r\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n');
+        return code
+            /* SAFER LINE-BY-LINE PROCESSING */
+            // Remove single-line /* comments */ (but keep /** docs */)
+            .replace(/^[ \t]*\/\*(?!\*).*?\*\/[ \t]*$/gm, '')
+
+            // Remove //comments without space (but keep // comments)
+            .replace(/^[ \t]*\/\/[^\s].*$/gm, '')
+
+            /* FORMATTING */
+            .replace(/\r\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n');
     }
-  });
+});
 
 
 
@@ -61,6 +61,25 @@ export default [
                 exports: 'named',
                 plugins: [terser()]
             },
+        ]
+    },
+
+    // Node.js CJS Build
+    {
+        input: 'src/index.js',
+        output: [
+            {
+                file: `dist/${libName}.node.js`,
+                format: 'cjs',
+                exports: 'named',
+                plugins: [stripDevComments()]
+            },
+            {
+                file: `dist/${libName}.node.min.js`,
+                format: 'cjs',
+                exports: 'named',
+                plugins: [terser()]
+            }
         ]
     }
 ];

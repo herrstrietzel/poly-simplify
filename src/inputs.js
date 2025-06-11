@@ -164,7 +164,12 @@ export function normalizePointInput(pts) {
     let isFlat = !Array.isArray(pts[0]) && !pts[0].hasOwnProperty('x');
     if (isFlat) pts = toPointArray(pts);
     //console.log(isArray, pts);
+
+
     //console.log(pts);
+
+
+
 
     return pts;
 }
