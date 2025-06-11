@@ -1,6 +1,6 @@
 {
   "name": "poly-simplify",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "main": "./dist/poly-simplify.node.js",
   "module": "./dist/poly-simplify.esm.js",
   "browser": "./dist/poly-simplify.js",
@@ -39,6 +39,7 @@
   "description": "Simplify polyline or polygon vertices in JS",
   "dependencies": {
     "heap": "^0.2.7",
+    "poly-simplify": "^0.1.6",
     "terser": "^5.39.0"
   },
   "bugs": {
