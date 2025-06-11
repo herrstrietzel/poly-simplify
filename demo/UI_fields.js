@@ -39,9 +39,7 @@ let fieldsInput = [
                 type: 'text',
                 defaults: '',
                 atts: {
-                    min: 0,
-                    max: 30,
-                    step: 0.05,
+                    placeholder:'e.g "1px" or "150v"'
                 }
 
             },
