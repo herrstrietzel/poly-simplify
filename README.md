@@ -156,6 +156,7 @@ See all versions on
 * [jsdelivr](https://www.jsdelivr.com/package/npm/poly-simplify)
 
 ### Changelog
+* 0.1.9 new unite feature for self-intersecting polylines; mercator projection option
 * 0.1.4 fixed problems with linear polylines
 
 
