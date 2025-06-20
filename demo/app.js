@@ -78,7 +78,7 @@ function update(settings) {
     //console.log(settings);
 
     let { RC, RDP, VW, RD, skipPoints, maxPoints, decimals, inputPoly, quality, tolerance, outputFormat, toRelative,
-        toShorthands, minifyString, scale, alignToZero, translateX, translateY, scaleToWidth, scaleToHeight, showFill, showMarkers, optimizeStartingPoint, overrideQuality } = settings;
+        toShorthands, minifyString, scale, alignToZero, translateX, translateY, scaleToWidth, scaleToHeight, showFill, showMarkers, optimizeStartingPoint, overrideQuality, mercator, unite } = settings;
 
     let options = {
         quality,
@@ -88,6 +88,9 @@ function update(settings) {
         RDP,
         RD,
         VW,
+        mercator,
+        unite,
+
         skipPoints,
         maxPoints,
 

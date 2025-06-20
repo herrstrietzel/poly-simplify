@@ -13,6 +13,7 @@ let fieldsInput = [
         `,
     },
 
+
     {
         label: 'Quality',
         info: 'Quality &gt;1 shows the original polygon',
@@ -141,10 +142,28 @@ let fieldsInput = [
 
 
 
+
     {
-        label: 'Scaling and alignment',
+        label: 'Transformations and alignment',
         info: 'Useful for tiny poly data such as geodata polygons.',
         fields: [
+
+            {
+                name: 'mercator',
+                label: 'Mercator projection',
+                info: 'Apply Mercator projection to geodata inputs',
+                type: 'checkbox'
+
+            },
+
+            {
+                name: 'unite',
+                label: 'Unite',
+                info: 'Unite self intersecting polygons',
+                type: 'checkbox'
+
+            },
+
             {
                 name: 'scale',
                 label: 'scale',

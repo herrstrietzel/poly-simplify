@@ -1,5 +1,7 @@
 import { normalizePointInput } from './inputs.js';
-import { reducePoints, getAngle, getPolyBBox, getPolygonArea, getSquareDistance, detectRegularPolygon, scalePolygon, sortPolygonLeftTopFirst, isClosedPolygon } from './geometry.js';
+import { reducePoints, getAngle, getPolyBBox, getPolygonArea, getSquareDistance, detectRegularPolygon, scalePolygon, sortPolygonLeftTopFirst, isClosedPolygon, unitePolygon } from './geometry.js';
+
+import {isGeoData, pointsToMercator} from './geometry_geo.js';
 
 import { pathDataToPoly, minifyPathData, pathDataToD } from './parsePath.js';
 //import { scalePolygon } from './scale.js';
@@ -21,6 +23,9 @@ function polySimplify_core(pts, {
     RDP = true,
     VW = false,
     RD = true,
+
+    mercator=false,
+    unite=false,
 
     // allow custom combinations
     overrideQuality = false,
@@ -218,6 +223,15 @@ function polySimplify_core(pts, {
             //console.log('pts:', ptsSmp);
         }
 
+        /**
+         * unite self intersecting 
+         * polygons
+         */
+
+        if(unite){
+            ptsSmp = unitePolygon(ptsSmp);
+        }
+
 
         /**
          * check regular polygons
@@ -304,6 +318,11 @@ function polySimplify_core(pts, {
             ptsSmp = simplifyToMax(ptsSmp, maxPointsSub)
         }
 
+
+        // apply mercator projection
+        if(mercator){
+            ptsSmp = pointsToMercator(ptsSmp)
+        }
 
         // add to final pts array
         polyArrSimpl.push(ptsSmp);

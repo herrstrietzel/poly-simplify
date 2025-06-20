@@ -107,6 +107,10 @@ console.log(simplified);
 | output | `points` | string | output result: 1. "points"= point object array  2. "path"= SVG path data string 3. "pathdata" = pathdata array 4. "json"= JSON string 5. "pointString" = flat point string (as used for polygon points attribute) |
 | skipPoints | `false`  | Boolean | simplify by reducing number of vertices to a max limit | 
 | maxPoints | `0` | Number | Max points limit for `useMax` option |
+
+| mercator | `false` | Boolean | Applies Mercator projection – for geodata polygons (or funny distortion effects) |  
+
+| unite | `false` | Boolean | Unites self intersecting polygons |  
 | scale | `1` | Number | scale polygon |  
 | scaleToWidth, scaleToHeight | `0` | Number | fit polygon into specified max dimensions |  
 | alignToZero | `false` | Boolean | align weird starting coordinates to x/y=0 |  

@@ -39,7 +39,7 @@ export function simplifyRC(pts) {
                 ptsSmp.push(pt1);
             }
             // add last point
-            else if(i === l - 1){
+            if(i === l - 1){
                 ptsSmp.push(pt2);
             }
             pt0 = pt1;
@@ -72,7 +72,7 @@ export function simplifyRC(pts) {
     // first and last points coincide
     pt0 = ptsSmp[0];
     if(pt0.x===ptL.x && pt0.y===ptL.y){
-        pts.pop();
+        ptsSmp.pop();
     }
     //console.log('pts RC:', ptsSmp);
     return ptsSmp;

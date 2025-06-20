@@ -87,6 +87,7 @@ body {}
 .showMarkers * {
     marker-start: url(#markerStart);
     marker-mid: url(#markerRound);
+    marker-end: url(#markerRound);
     stroke: #ccc;
     stroke-width: inherit;
 }

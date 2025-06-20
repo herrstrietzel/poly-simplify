@@ -11,11 +11,38 @@ function initZoomEls() {
     if (!styleEl) {
         styleEl = document.createElement('style');
         styleEl.textContent = `
-        .elzoomo-wrp{
+        .elzoomo{
             position:relative;
             overflow:hidden;
         }
-        `;
+
+        .elzoomo-toolbar{
+            position:absolute;
+            left:1rem;
+            top:1rem;
+            display:flex;
+            flex-direction:column;
+            gap:0rem;
+            border-radius:0.25rem;
+            outline: 2px solid var(--color-text, #000);
+        }
+
+        .elzoomo-btn{
+            appearance:none;
+            border:none;
+            line-height:0em;
+            font-size:32px;
+            width:1em;
+            height:1em;
+            background-color:transparent;
+            font-weight:700;
+            text-align:center;
+            cursor:pointer;
+        }
+
+        .elzoomo-el:hover{
+            cursor:move;
+        }`;
         document.head.append(styleEl);
     }
 
@@ -24,13 +51,13 @@ function initZoomEls() {
     els.forEach(el => {
 
         // wrap if necessary
-        let container = el.closest('.elzoomo-wrp');
+        let container = el.closest('.elzoomo');
 
 
         if (!container) {
             container = document.createElement('div');
             el.parentNode.insertBefore(container, el);
-            container.classList.add('elzoomo-wrp');
+            container.classList.add('elzoomo');
             container.append(el)
         }
 
@@ -66,14 +93,44 @@ function initZoomEl(container, el, options) {
             maxScale: 10,
             zoom: 1,
             zoomStep: 1.001,
-            scaleStroke:false,
-            snapToOrigin: false
+            scaleStroke: false,
+            snapToOrigin: false,
+            toolbar: true
         },
         ...options
     };
 
     // get original strokeWidth
-    let strokeWidth= parseFloat(window.getComputedStyle(el).strokeWidth);
+    let strokeWidth = parseFloat(window.getComputedStyle(el).strokeWidth);
+
+
+    /**
+     * add zoom buttons
+     */
+
+    if (options.toolbar) {
+
+        let toolbar =
+        `<div class="elzoomo-toolbar">
+            <button type="button" class="elzoomo-btn elzoomo-btn-zoomin" title="zoom in">+</button>
+            <button type="button" class="elzoomo-btn elzoomo-btn-zoomout" title="zoom out">&minus;</button>
+        </div>` ;
+
+        container.insertAdjacentHTML('beforeend', toolbar);
+
+        let btnZoomIn = container.querySelector('.elzoomo-btn-zoomin')
+        let btnZoomOut = container.querySelector('.elzoomo-btn-zoomout')
+
+        btnZoomIn.addEventListener('click', e => {
+            e.deltaY = -100;
+            zoom(e)
+        })
+
+        btnZoomOut.addEventListener('click', e => {
+            e.deltaY = 100;
+            zoom(e)
+        })
+    }
 
 
     /**
@@ -83,7 +140,9 @@ function initZoomEl(container, el, options) {
     const updateScale = (mtx, e, newScale, minScale, maxScale, snapToOrigin = false) => {
         let clamp = (v, min, max) => Math.max(min, Math.min(max, v));
         let scale = clamp(newScale, minScale || 1, maxScale || 10);
-        let el = e.currentTarget.firstElementChild;
+        //let el = e.currentTarget.firstElementChild;
+        let el = e.currentTarget.closest('.elzoomo').firstElementChild;
+        //console.log(e.currentTarget);
 
         let [prevScale, translateX, translateY] = [mtx.a, mtx.e, mtx.f];
 
@@ -125,7 +184,7 @@ function initZoomEl(container, el, options) {
      * zoom processing 
      */
 
-    function pan(e) {
+    const pan=(e)=>{
         let { dx, dy } = e.detail;
         let el = e.currentTarget.firstElementChild;
         let m = getCurrentTransforms(el);
@@ -134,10 +193,10 @@ function initZoomEl(container, el, options) {
     }
 
 
-    function zoom(e) {
+    const zoom=(e)=>{
         let { zoomStep, minScale, maxScale, snapToOrigin, scaleStroke } = options;
         let zoomFactor = (zoomStep ** -e.deltaY) || 1;
-        let el = e.currentTarget.firstElementChild;
+        let el = e.currentTarget.closest('.elzoomo').firstElementChild;
 
         // get current matrix
         let m = getCurrentTransforms(el)
@@ -147,8 +206,8 @@ function initZoomEl(container, el, options) {
         // update scaling
         let mtxNew = updateScale(m, e, scaleNew, minScale, maxScale, snapToOrigin);
 
-        if(scaleStroke){
-            el.style.strokeWidth = (strokeWidth * (1 / scaleNew))+'px';
+        if (scaleStroke) {
+            el.style.strokeWidth = (strokeWidth * (1 / scaleNew)) + 'px';
         }
 
         // apply transforms
@@ -158,10 +217,12 @@ function initZoomEl(container, el, options) {
 
 
 
+
+
     /**
      * custom events
      */
-    function addDragInputListener(el) {
+    const addDragInputListener=(el)=>{
         function dispatchDragInput(type, originalEvent, data) {
             let dragEvent = new CustomEvent('dragInput', {
                 bubbles: true,
@@ -174,7 +235,7 @@ function initZoomEl(container, el, options) {
             el.dispatchEvent(dragEvent);
         }
 
-        function onStart(e) {
+        const onStart = (e)=>{
             e.preventDefault();
             if (e.type === 'touchstart' && e.touches.length > 1) return;
 
@@ -184,13 +245,13 @@ function initZoomEl(container, el, options) {
             let lastX = pt.clientX;
             let lastY = pt.clientY;
 
-            function onMove(ev) {
-                if (isTouch && ev.touches.length > 1) return;
-                let ptMove = isTouch ? ev.touches[0] : ev;
+            const onMove=(e)=>{
+                if (isTouch && e.touches.length > 1) return;
+                let ptMove = isTouch ? e.touches[0] : e;
                 let dx = ptMove.clientX - lastX;
                 let dy = ptMove.clientY - lastY;
 
-                dispatchDragInput('move', ev, {
+                dispatchDragInput('move', e, {
                     clientX: ptMove.clientX,
                     clientY: ptMove.clientY,
                     dx,
@@ -201,8 +262,8 @@ function initZoomEl(container, el, options) {
                 lastY = ptMove.clientY;
             }
 
-            function onEnd(ev) {
-                dispatchDragInput('end', ev, {});
+            const onEnd = (e)=>{
+                dispatchDragInput('end', e, {});
                 window.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onMove);
                 window.removeEventListener(isTouch ? 'touchend' : 'mouseup', onEnd);
             }
@@ -229,11 +290,11 @@ function initZoomEl(container, el, options) {
 
 
     // pinch zoom event
-    function addPinchZoomListener(el) {
+    const addPinchZoomListener=(el)=>{
         let prevDistance = null;
-        let lastCenter = { x: 0, y: 0 };
+        //let lastCenter = { x: 0, y: 0 };
 
-        function onTouchMove(e) {
+        const onTouchMove=(e)=>{
             e.preventDefault();
             // prevent pinch
             if (e.touches.length !== 2) return;
@@ -263,10 +324,10 @@ function initZoomEl(container, el, options) {
             }
 
             prevDistance = distance;
-            lastCenter = center;
+            //lastCenter = center;
         }
 
-        function onTouchEnd() {
+        const onTouchEnd = ()=>{
             prevDistance = null;
         }
 
@@ -301,6 +362,5 @@ function initZoomEl(container, el, options) {
     }, { passive: false });
 
 }
-
 
 
