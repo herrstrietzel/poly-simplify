@@ -856,26 +856,26 @@ function normalizePointInput(pts) {
 }
 
 function getSquareDistance(p1, p2) {
-    return (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2
+  return (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2
 }
 
 function detectRegularPolygon(pts) {
-    let lastDist = getSquareDistance(pts[0], pts[1]);
-    let isRegular = true;
+  let lastDist = getSquareDistance(pts[0], pts[1]);
+  let isRegular = true;
 
-    for (let i = 3, l = pts.length; i < l; i++) {
-        let pt1 = pts[i - 1];
-        let pt2 = pts[i];
-        let dist = getSquareDistance(pt1, pt2);
-        let distDiff = 100 / lastDist * Math.abs(lastDist - dist);
+  for (let i = 3, l = pts.length; i < l; i++) {
+    let pt1 = pts[i - 1];
+    let pt2 = pts[i];
+    let dist = getSquareDistance(pt1, pt2);
+    let distDiff = 100 / lastDist * Math.abs(lastDist - dist);
 
-        if (distDiff > 0.1) {
-            return false;
-        }
-
-        lastDist = dist;
+    if (distDiff > 0.1) {
+      return false;
     }
-    return isRegular;
+
+    lastDist = dist;
+  }
+  return isRegular;
 }
 
 /**
@@ -883,25 +883,25 @@ function detectRegularPolygon(pts) {
  * avoid mid points on colinear segments
  */
 
-function sortPolygonLeftTopFirst(pts, isPolygon=null) {
+function sortPolygonLeftTopFirst(pts, isPolygon = null) {
 
-    if (pts.length === 0) return pts;
-    
-    isPolygon = isPolygon===null ? isClosedPolygon(pts) : isPolygon;
+  if (pts.length === 0) return pts;
 
-    if(!isPolygon) return pts;
-    
-    let firstIndex = 0;
-    for (let i = 1,l=pts.length; i < l; i++) {
-        let current = pts[i];
-        let first = pts[firstIndex];
-        if (current.x < first.x || (current.x === first.x && current.y < first.y)) {
-            firstIndex = i;
-        }
+  isPolygon = isPolygon === null ? isClosedPolygon(pts) : isPolygon;
+
+  if (!isPolygon) return pts;
+
+  let firstIndex = 0;
+  for (let i = 1, l = pts.length; i < l; i++) {
+    let current = pts[i];
+    let first = pts[firstIndex];
+    if (current.x < first.x || (current.x === first.x && current.y < first.y)) {
+      firstIndex = i;
     }
-    
-    let ptsN = pts.slice(firstIndex).concat(pts.slice(0, firstIndex));
-    return ptsN;
+  }
+
+  let ptsN = pts.slice(firstIndex).concat(pts.slice(0, firstIndex));
+  return ptsN;
 }
 
 /**
@@ -909,15 +909,17 @@ function sortPolygonLeftTopFirst(pts, isPolygon=null) {
  * to be closed 
  * or an open polyline 
  */
-function isClosedPolygon(pts, reduce=24){
+function isClosedPolygon(pts, reduce = 24) {
 
-    let ptsR = reducePoints$1(pts, reduce);
-    let { width, height } = getPolyBBox$1(ptsR);
-    let dimAvg = Math.max(width, height);
-    let closingThresh = (dimAvg / pts.length) ** 2;
-    let closingDist = getSquareDistance(pts[0], pts[pts.length - 1]);
+  let ptsR = reducePoints$1(pts, reduce);
+  let { width, height } = getPolyBBox$1(ptsR);
 
-    return closingDist < closingThresh;
+  let dimAvg = (width + height) / 2;
+
+  let closingThresh = (dimAvg) ** 2;
+  let closingDist = getSquareDistance(pts[0], pts[pts.length - 1]);
+
+  return closingDist < closingThresh;
 }
 
 /**
@@ -925,94 +927,95 @@ function isClosedPolygon(pts, reduce=24){
  * for sloppy dimension approximations
  */
 function reducePoints$1(points, maxPoints = 48) {
-    if (!Array.isArray(points) || points.length <= maxPoints) return points;
+  if (!Array.isArray(points) || points.length <= maxPoints) return points;
 
-    // Calculate how many points to skip between kept points
-    let len = points.length;
-    let step = len / maxPoints;
-    let reduced = [];
+  // Calculate how many points to skip between kept points
+  let len = points.length;
+  let step = len / maxPoints;
+  let reduced = [points[0]];
 
-    for (let i = 0; i < maxPoints; i++) {
-        reduced.push(points[Math.floor(i * step)]);
-    }
+  for (let i = 0; i < maxPoints; i++) {
+    reduced.push(points[Math.floor(i * step)]);
+  }
 
-    let lenR = reduced.length;
-    // Always include the last point to maintain path integrity
-    if (reduced[lenR - 1] !== points[len - 1]) {
-        reduced[lenR - 1] = points[len - 1];
-    }
+  let lenR = reduced.length;
+  // Always include the last point to maintain path integrity
+  if (reduced[lenR - 1] !== points[len - 1]) {
+    reduced[lenR - 1] = points[len - 1];
+  }
 
-    return reduced;
+  return reduced;
 }
 
-function getPolygonArea(points, absolute = true) {
-    let area = 0;
-    for (let i = 0, len = points.length; len && i < len; i++) {
-        let addX = points[i].x;
-        let addY = points[i === points.length - 1 ? 0 : i + 1].y;
-        let subX = points[i === points.length - 1 ? 0 : i + 1].x;
-        let subY = points[i].y;
-        area += addX * addY * 0.5 - subX * subY * 0.5;
-    }
-    return absolute ? Math.abs(area) : area;
+function getPolygonArea(pts, absolute = true) {
+  let area = 0;
+  for (let i = 0, len = pts.length; len && i < len; i++) {
+    let ptN = pts[i === len - 1 ? 0 : i + 1];
+    let addX = pts[i].x;
+    let addY = ptN.y;
+    let subX = ptN.x;
+    let subY = pts[i].y;
+    area += addX * addY * 0.5 - subX * subY * 0.5;
+  }
+  return absolute ? Math.abs(area) : area;
 }
 
 function getPolyBBox$1(vertices) {
-    let xArr = vertices.map(pt => pt.x);
-    let yArr = vertices.map(pt => pt.y);
-    let left = Math.min(...xArr);
-    let right = Math.max(...xArr);
-    let top = Math.min(...yArr);
-    let bottom = Math.max(...yArr);
-    let bb = {
-        x: left,
-        left: left,
-        right: right,
-        y: top,
-        top: top,
-        bottom: bottom,
-        width: right - left,
-        height: bottom - top
-    };
+  let xArr = vertices.map(pt => pt.x);
+  let yArr = vertices.map(pt => pt.y);
+  let left = Math.min(...xArr);
+  let right = Math.max(...xArr);
+  let top = Math.min(...yArr);
+  let bottom = Math.max(...yArr);
+  let bb = {
+    x: left,
+    left: left,
+    right: right,
+    y: top,
+    top: top,
+    bottom: bottom,
+    width: right - left,
+    height: bottom - top
+  };
 
-    return bb;
+  return bb;
 }
 
 function scalePolygon(pts, scale = 1, translateX = 0, translateY = 0, alignToZero = false, scaleToWidth = 0, scaleToHeight = 0) {
 
-    if (scale === 1 && scaleToWidth === 0 && scaleToHeight === 0 && translateX === 0 && translateY === 0 && alignToZero === false) return pts;
+  if (scale === 1 && scaleToWidth === 0 && scaleToHeight === 0 && translateX === 0 && translateY === 0 && alignToZero === false) return pts;
 
-    let x, y, width, height;
+  let x, y, width, height;
 
-    let isCompound = Array.isArray(pts[0]);
+  let isCompound = Array.isArray(pts[0]);
 
-    let ptsArr = isCompound ? pts : [pts];
-    let ptsFlat = isCompound ? pts.flat() : pts;
+  let ptsArr = isCompound ? pts : [pts];
+  let ptsFlat = isCompound ? pts.flat() : pts;
 
-    ({ x, y, width, height } = getPolyBBox$1(ptsFlat));
+  ({ x, y, width, height } = getPolyBBox$1(ptsFlat));
 
-    ptsArr.forEach((pts,p) => {
-        scale = scaleToWidth ? scaleToWidth / width : (scaleToHeight ? scaleToHeight / height : scale);
+  ptsArr.forEach((pts, p) => {
+    scale = scaleToWidth ? scaleToWidth / width : (scaleToHeight ? scaleToHeight / height : scale);
 
-        // if both are defined - adjust to fit in box max dimension
-        if (scaleToHeight) {
-            if (height * scale > scaleToHeight) {
-                scale = scaleToHeight / height;
-            }
-        }
+    // if both are defined - adjust to fit in box max dimension
+    if (scaleToHeight) {
+      if (height * scale > scaleToHeight) {
+        scale = scaleToHeight / height;
+      }
+    }
 
-        if (alignToZero) {
-            translateX = -x;
-            translateY = -y;
-        }
+    if (alignToZero) {
+      translateX = -x;
+      translateY = -y;
+    }
 
-        for (let i = 0, l = pts.length; i < l; i++) {
-            let pt = pts[i];
-            ptsArr[p][i] = { x: (pt.x + translateX) * scale, y: (pt.y + translateY) * scale };
-        }
-    });
+    for (let i = 0, l = pts.length; i < l; i++) {
+      let pt = pts[i];
+      ptsArr[p][i] = { x: (pt.x + translateX) * scale, y: (pt.y + translateY) * scale };
+    }
+  });
 
-    return ptsArr ;
+  return ptsArr;
 }
 
 /**
@@ -1022,133 +1025,132 @@ function scalePolygon(pts, scale = 1, translateX = 0, translateY = 0, alignToZer
  */
 
 function unitePolygon(poly) {
-    const getSelfIntersections = (pts, pt0, pt1) => {
-      const getLineIntersection = (pt0, pt1, pt2, pt3) => {
-        let [x1, x2, x3, x4] = [pt0.x, pt1.x, pt2.x, pt3.x];
-        let [y1, y2, y3, y4] = [pt0.y, pt1.y, pt2.y, pt3.y];
-  
-        // get x/y deltas
-        let [dx1, dx2] = [x1 - x2, x3 - x4];
-        let [dy1, dy2] = [y1 - y2, y3 - y4];
-  
-        // Calculate the denominator of the intersection point formula (cross product)
-        let denominator = dx1 * dy2 - dy1 * dx2;
-  
-        // denominator === 0: lines are parallel - no intersection
-        if (denominator === 0) return null;
-  
-        // Cross products of the endpoints
-        let cross1 = x1 * y2 - y1 * x2;
-        let cross2 = x3 * y4 - y3 * x4;
-  
-        let x = (cross1 * dx2 - dx1 * cross2) / denominator;
-        let y = (cross1 * dy2 - dy1 * cross2) / denominator;
-  
-        // Check if the x and y coordinates are within both lines boundaries
-        if (
-          x < Math.min(x1, x2) ||
-          x > Math.max(x1, x2) ||
-          x < Math.min(x3, x4) ||
-          x > Math.max(x3, x4) ||
-          y < Math.min(y1, y2) ||
-          y > Math.max(y1, y2) ||
-          y < Math.min(y3, y4) ||
-          y > Math.max(y3, y4)
-        ) {
-          return null;
-        }
-  
-        return { x, y };
-      };
-  
-      const squaredDist = (p1, p2) => {
-        return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
-      };
-  
-      const len = pts.length;
-  
-      // collect intersections
-      let intersections = [];
+  const getSelfIntersections = (pts, pt0, pt1) => {
+    const getLineIntersection = (pt0, pt1, pt2, pt3) => {
+      let [x1, x2, x3, x4] = [pt0.x, pt1.x, pt2.x, pt3.x];
+      let [y1, y2, y3, y4] = [pt0.y, pt1.y, pt2.y, pt3.y];
 
-  
-      let segLenSq = squaredDist(pt0, pt1);
-      let thresh = segLenSq / 1000;
-  
-      for (let i = 0; i < len; i++) {
-        let pt2 = pts[i];
-        let pt3 = pts[(i + 1) % len];
-  
-        // Skip if this is the segment itself
-        if (pt3 === pt1) continue;
-  
-        let intersectionPoint = getLineIntersection(pt0, pt1, pt2, pt3);
-  
-        if (intersectionPoint) {
-          const lengthSq = squaredDist(pt0, intersectionPoint);
-  
-          if (lengthSq > thresh && lengthSq < segLenSq) {
-            intersections.push({
-              pt0,
-              pt1,
-              startPoint: pt2,
-              intersectionPoint,
-              endPoint: pt3,
-              lengthSq
-            });
-          }
+      // get x/y deltas
+      let [dx1, dx2] = [x1 - x2, x3 - x4];
+      let [dy1, dy2] = [y1 - y2, y3 - y4];
+
+      // Calculate the denominator of the intersection point formula (cross product)
+      let denominator = dx1 * dy2 - dy1 * dx2;
+
+      // denominator === 0: lines are parallel - no intersection
+      if (denominator === 0) return null;
+
+      // Cross products of the endpoints
+      let cross1 = x1 * y2 - y1 * x2;
+      let cross2 = x3 * y4 - y3 * x4;
+
+      let x = (cross1 * dx2 - dx1 * cross2) / denominator;
+      let y = (cross1 * dy2 - dy1 * cross2) / denominator;
+
+      // Check if the x and y coordinates are within both lines boundaries
+      if (
+        x < Math.min(x1, x2) ||
+        x > Math.max(x1, x2) ||
+        x < Math.min(x3, x4) ||
+        x > Math.max(x3, x4) ||
+        y < Math.min(y1, y2) ||
+        y > Math.max(y1, y2) ||
+        y < Math.min(y3, y4) ||
+        y > Math.max(y3, y4)
+      ) {
+        return null;
+      }
+
+      return { x, y };
+    };
+
+    const squaredDist = (p1, p2) => {
+      return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
+    };
+
+    const len = pts.length;
+
+    // collect intersections
+    let intersections = [];
+
+    let segLenSq = squaredDist(pt0, pt1);
+    let thresh = segLenSq / 1000;
+
+    for (let i = 0; i < len; i++) {
+      let pt2 = pts[i];
+      let pt3 = pts[(i + 1) % len];
+
+      // Skip if this is the segment itself
+      if (pt3 === pt1) continue;
+
+      let intersectionPoint = getLineIntersection(pt0, pt1, pt2, pt3);
+
+      if (intersectionPoint) {
+        const lengthSq = squaredDist(pt0, intersectionPoint);
+
+        if (lengthSq > thresh && lengthSq < segLenSq) {
+          intersections.push({
+            pt0,
+            pt1,
+            startPoint: pt2,
+            intersectionPoint,
+            endPoint: pt3,
+            lengthSq
+          });
         }
       }
-  
-      intersections.sort((a, b) => a.lengthSq - b.lengthSq);
-      return intersections;
-    };
-  
-    const len = poly.length;
-    if (len < 3) return poly;
-  
-    // Set up next indices once
-    for (let i = 0; i < len; i++) {
-      poly[i].next = (i + 1) % len;
     }
-  
-    const newPoly = [];
-    let currentPoint = poly[0];
-    let nextPoint = poly[currentPoint.next];
-    newPoly.push(currentPoint);
-  
-    for (let i = 0; i < len * 2; i++) {
-      const intersections = getSelfIntersections(poly, currentPoint, nextPoint);
-  
-      if (intersections.length === 0) {
-        newPoly.push(nextPoint);
-        currentPoint = nextPoint;
-        nextPoint = poly[nextPoint.next];
-      } else {
-        const closest = intersections[0];
-        currentPoint = closest.intersectionPoint;
-        nextPoint = closest.endPoint;
-        newPoly.push(currentPoint);
-      }
-  
-      // Closed loop detection — same position, not necessarily same object
-      if (
-        newPoly.length > 2 &&
-        currentPoint.x === newPoly[0].x &&
-        currentPoint.y === newPoly[0].y
-      ) {
-        break;
-      }
-    }
-  
-    // Remove closing duplicate point if present
-    const first = newPoly[0];
-    const last = newPoly[newPoly.length - 1];
-    if (first.x === last.x && first.y === last.y) {
-      newPoly.pop();
-    }
-  
-    return newPoly;
+
+    intersections.sort((a, b) => a.lengthSq - b.lengthSq);
+    return intersections;
+  };
+
+  const len = poly.length;
+  if (len < 3) return poly;
+
+  // Set up next indices once
+  for (let i = 0; i < len; i++) {
+    poly[i].next = (i + 1) % len;
   }
+
+  const newPoly = [];
+  let currentPoint = poly[0];
+  let nextPoint = poly[currentPoint.next];
+  newPoly.push(currentPoint);
+
+  for (let i = 0; i < len * 2; i++) {
+    const intersections = getSelfIntersections(poly, currentPoint, nextPoint);
+
+    if (intersections.length === 0) {
+      newPoly.push(nextPoint);
+      currentPoint = nextPoint;
+      nextPoint = poly[nextPoint.next];
+    } else {
+      const closest = intersections[0];
+      currentPoint = closest.intersectionPoint;
+      nextPoint = closest.endPoint;
+      newPoly.push(currentPoint);
+    }
+
+    // Closed loop detection — same position, not necessarily same object
+    if (
+      newPoly.length > 2 &&
+      currentPoint.x === newPoly[0].x &&
+      currentPoint.y === newPoly[0].y
+    ) {
+      break;
+    }
+  }
+
+  // Remove closing duplicate point if present
+  const first = newPoly[0];
+  const last = newPoly[newPoly.length - 1];
+  if (first.x === last.x && first.y === last.y) {
+    newPoly.pop();
+  }
+
+  return newPoly;
+}
 
 function pointsToMercator(pts) {
   
@@ -1384,69 +1386,206 @@ function getOutputData(polyArr, polyArrSimpl, outputFormat = 'points', meta = fa
 * geometry should be perfectly retained
 */
 
-function simplifyRC(pts) {
+function simplifyRC(pts, quality = 1, shiftStart = true) {
 
     if (pts.length < 3) return pts;
 
-    let ptsSmp = [pts[0]];
-    let pt0 = pts[0];
-    let pt1, pt2;
-    let ptL = pts[pts.length-1];
-    let tolerance = 1;
+    let l = pts.length;
 
-    // First pass: Remove colinear points and collect triangle areas
-    for (let i = 2, l = pts.length; i < l; i++) {
+    // starting point
+    let M = pts[0];
+
+    // last point
+    let Z = pts[l - 1];
+
+    // remove unnecessary closing point
+    if (M.x === Z.x && M.y === Z.y) {
+
+        pts.pop();
+        l--;
+        Z = pts[l - 1];
+    }
+
+    // init new point array
+    let ptsSmp = [M];
+    let pt0 = M;
+    let pt1, pt2;
+
+    // approximate dimensions for relative threshold
+    let ptsR = reducePoints$1(pts, 32);
+    let polyBB = getPolyBBox$1(ptsR);
+
+    let { width, height } = polyBB;
+    let dimAvg = (width + height) / 2;
+
+    // adjust tolerance based on points-per-dimension ratio
+    let div = quality ? l * 5 * quality : 250;
+    let tolerance = dimAvg / div;
+    let tolerance2 = tolerance * 2.5;
+
+    let dx0 = null;
+    let dy0 = null;
+
+    /*
+    // get average square distance
+    let dists = []
+    let distAV = 0
+
+    let maxPoints = 24;
+    let step = Math.floor(l / maxPoints) || 1;
+    console.log('step', step);
+    */
+
+    /*
+    for (let i = 1; i < l; i+=step) {
+        pt0 = pts[i - 1];
+        pt1 = pts[i];
+        let dist = getSquareDistance(pt0, pt1)
+        distAV+=dist
+        dists.push(dist)
+
+    }
+    distAV = distAV/(maxPoints+1)
+
+    tolerance = distAV*0.01
+    console.log(tolerance);
+    */
+
+    // loop through vertices by triangles
+    for (let i = 2; i < l; i++) {
         pt1 = pts[i - 1];
         pt2 = pts[i];
+        let isLast = i === l - 1;
 
-        // Skip zero-length segments
-        if (pt1.x === pt2.x && pt1.y === pt2.y) continue;
+        /**
+         * 1. Skip zero-length segments
+         */
+        if ((pt1.x === pt0.x && pt1.y === pt0.y) || (pt1.x === pt2.x && pt1.y === pt2.y)) {
 
-        // Check for vertical/horizontal segments
+            continue;
+        }
+
+        /**
+         * 2. Check for perfectly flat
+         * vertical/horizontal segments
+         */
         let isVertical = (pt0.x === pt1.x);
         let isHorizontal = (pt0.y === pt1.y);
 
         if (isVertical || isHorizontal) {
-            let nextVertical = (pt1.x === pt2.x);
-            let nextHorizontal = (pt1.y === pt2.y);
 
-            if (!(nextVertical && isVertical) && !(nextHorizontal && isHorizontal)) {
-                ptsSmp.push(pt1);
+            let isVertical2 = (pt1.x === pt2.x);
+            let isHorizontal2 = (pt1.y === pt2.y);
+
+            if (((isVertical && isVertical2) || (isHorizontal && isHorizontal2))) {
+
+                // perfectly flat segment - skip
+                if (!isLast) continue;
+
+                // flat but last – add last and skip colinearity check
+                if (isLast && M.x !== pt2.x && M.y !== pt2.y) {
+
+                    ptsSmp.push(pt2);
+                    continue
+                }
+
             }
-            // add last point
-            if(i === l - 1){
-                ptsSmp.push(pt2);
-            }
-            pt0 = pt1;
-            continue;
         }
+        dx0 = pt1.x - pt0.x;
+        dy0 = pt1.y - pt0.y;
 
-        // Cross product check for colinearity
-        let dx0 = pt0.x - pt2.x;
-        let dy0 = pt0.y - pt2.y;
-        let dx1 = pt0.x - pt1.x;
-        let dy1 = pt0.y - pt1.y;
+        let dx1 = pt2.x - pt1.x;
+        let dy1 = pt2.y - pt1.y;
+
         let cross = Math.abs(dx0 * dy1 - dy0 * dx1);
 
-        // Dynamic tolerance based on segment length
-        let squareDistance = getSquareDistance(pt1, pt2);
-        tolerance = squareDistance / 50;
+        // 1. adjust tolerance - increase precision for detailed
+        /*
+        if (cross < tolerance * 0.95) {
+            let dist = getSquareDistance(pt0, pt1)
+            let tolerance2 = dist / 250
+            console.log('adjust1');
 
-        if (cross > tolerance) {
-            if (i === l - 1) {
-                // last point
-                ptsSmp.push(pt1, pt2);
-            } else {
-                ptsSmp.push(pt1);
+            if (cross > tolerance2) {
+
+                console.log('adjust1 tol');
+
+                cross = Infinity
+            }else{
+                console.log('keep');
             }
         }
+            */
+
+        // 2. adjust tolerance - decrease precision for simple polys
+     if (cross > tolerance && cross < tolerance2) {
+
+            let area = getPolygonArea([pt0, pt1, pt2]);
+            if (area < tolerance) {
+                cross = 0;
+
+            }
+
+        }
+
+        if (!isVertical && !isHorizontal && (cross < tolerance)) {
+
+            if (!isLast) continue;
+
+            // check if last point is colinear with first point
+            if (isLast && M.x !== pt2.x && M.y !== pt2.y) {
+
+                let dxM = pt2.x - M.x;
+                let dyM = pt2.y - M.y;
+                let crossM = Math.abs(dxM * dy1 - dyM * dx1);
+
+                if (crossM > tolerance) {
+
+                    ptsSmp.push(pt2);
+                }
+                continue
+            }
+
+        } else {
+
+            // no simplification - add mid pt 
+            ptsSmp.push(pt1);
+
+            // add last point if not first
+            if (isLast && M.x !== pt2.x && M.y !== pt2.y) {
+                // console.log('add last', M, pt2);
+                ptsSmp.push(pt2);
+            }
+        }
+
+        // update previous point
         pt0 = pt1;
+
     }
 
-    // first and last points coincide
-    pt0 = ptsSmp[0];
-    if(pt0.x===ptL.x && pt0.y===ptL.y){
-        ptsSmp.pop();
+    /**
+     * check if starting point is in
+     * colinear segment 
+     * shift starting point
+     * exclude flat horizontal or vertical lines
+     */
+
+    // remove last horizontal or vertical
+    if (ptsSmp.length > 2 && ((M.x === Z.x && M.y !== Z.y) || (M.x !== Z.x && M.y === Z.y))) ;
+
+    else if (shiftStart && M.x !== Z.x && M.y !== Z.y) {
+
+        pt2 = ptsSmp[1];
+        let dxZ = pt2.x - Z.x;
+        let dyZ = pt2.y - Z.y;
+        let dxM = pt2.x - M.x;
+        let dyM = pt2.y - M.y;
+        let crossZ = Math.abs(dxZ * dyM - dyZ * dxM);
+
+        if (crossZ < tolerance) {
+
+            ptsSmp.shift();
+        }
     }
 
     return ptsSmp;
@@ -2127,6 +2266,11 @@ function polySimplify_core(pts, {
             continue;
         }
 
+        // apply mercator projection
+        if(mercator){
+            ptsSmp = pointsToMercator(ptsSmp);
+        }
+
         /**
          * 0. reduce vertices to 
          * maximum limit
@@ -2234,7 +2378,7 @@ function polySimplify_core(pts, {
         }
 
         /**
-         * 3. Apply VW-Whyatt 
+         * 3. Apply Visvalingam-Whyatt 
          * simplification for huge geodata polygons
          */
 
@@ -2265,11 +2409,6 @@ function polySimplify_core(pts, {
 
             // final reduction
             ptsSmp = simplifyToMax(ptsSmp, maxPointsSub);
-        }
-
-        // apply mercator projection
-        if(mercator){
-            ptsSmp = pointsToMercator(ptsSmp);
         }
 
         // add to final pts array

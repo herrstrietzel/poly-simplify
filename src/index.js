@@ -157,11 +157,18 @@ function polySimplify_core(pts, {
         // collect simplified point array
         let ptsSmp = pts;
 
+
         // line segments 
         //|| quality > 1
         if (pts.length < 3) {
             polyArrSimpl.push(ptsSmp);
             continue;
+        }
+
+
+        // apply mercator projection
+        if(mercator){
+            ptsSmp = pointsToMercator(ptsSmp)
         }
 
 
@@ -281,7 +288,7 @@ function polySimplify_core(pts, {
         }
 
         /**
-         * 3. Apply VW-Whyatt 
+         * 3. Apply Visvalingam-Whyatt 
          * simplification for huge geodata polygons
          */
 
@@ -321,7 +328,7 @@ function polySimplify_core(pts, {
 
         // apply mercator projection
         if(mercator){
-            ptsSmp = pointsToMercator(ptsSmp)
+           // ptsSmp = pointsToMercator(ptsSmp)
         }
 
         // add to final pts array
